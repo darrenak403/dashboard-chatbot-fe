@@ -1,9 +1,8 @@
 # Dependencies
 node_modules/
 
-# Build outputs
+# Build outputs (.next only — out/ cần cho docker/Dockerfile.prod trên CI)
 .next/
-out/
 dist/
 build/
 

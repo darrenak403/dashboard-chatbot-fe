@@ -1,4 +1,4 @@
-# Lint + typecheck → build image → push Docker Hub (VPS pull qua Dokploy)
+# Lint + typecheck → build static trên runner → image chỉ copy out/ (nhanh, kể cả arm64)
 name: Deploy
 
 on:
@@ -14,10 +14,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 # Secrets: DOCKER_USERNAME, DOCKER_PASSWORD
-# Sửa NEXT_PUBLIC_API_BASE_URL bên dưới trước khi deploy prod
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fpt-admission-dashboard
   NEXT_PUBLIC_API_BASE_URL: https://fpt-api.bean9.net
+  DOCKER_PLATFORMS: linux/arm64,linux/amd64
 
 jobs:
   test:
@@ -33,7 +33,9 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
+          path: |
+            ~/.bun/install/cache
+            node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
@@ -52,6 +54,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-next-
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build static export (native — không build Next trong Docker/QEMU)
+        run: bun run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - uses: docker/setup-buildx-action@v3
 
@@ -73,16 +97,16 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=
 
-      - name: Build and push
+      - name: Build and push image (chỉ đóng gói out/)
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          file: ./docker/Dockerfile.prod
+          platforms: ${{ env.DOCKER_PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }}

@@ -40,7 +40,7 @@ APP_TAG=latest
 PORT=3333
 ```
 
-`NEXT_PUBLIC_API_BASE_URL` cấu hình trong **workflow env** (`.github/workflows/deploy.yml`), bake lúc build image.
+`NEXT_PUBLIC_API_BASE_URL` trong **workflow env** — Next build trên CI runner, image `Dockerfile.prod` chỉ copy `out/` (nhanh trên Mac M4/arm64).
 
 Registry credentials Dokploy: `DOCKER_USERNAME` + `DOCKER_PASSWORD`.
 
