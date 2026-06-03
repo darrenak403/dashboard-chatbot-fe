@@ -26,6 +26,8 @@ Preview image Docker (profile `app`):
 docker compose -f docker/docker-compose.dev.yml --env-file docker/.env --profile app up -d
 ```
 
+**Tên Docker (prefix `fpt-`):** project `fpt-fe-dev` / `fpt-fe-prod`, container `fpt-dashboard-dev` / `fpt-dashboard-prod`, network `fpt-net-fe-*`. Image: `fpt-admission-dashboard`.
+
 ## Prod (Dokploy)
 
 1. GitHub push `main` → image `{DOCKER_USERNAME}/fpt-admission-dashboard:latest`

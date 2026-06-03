@@ -1,20 +1,21 @@
 # Dev: chạy FE trên host — task dev (port 3333)
-# Preview image Docker local: docker compose -f docker/docker-compose.dev.yml --profile app up -d
+# Preview image: docker compose -f docker/docker-compose.dev.yml --profile app up -d
 
-name: fpt-admission-dashboard-dev
+name: fpt-fe-dev
 
 services:
   app:
     profiles: ["app"]
     image: ${DOCKER_USERNAME}/fpt-admission-dashboard:${APP_TAG:-latest}
     pull_policy: always
-    container_name: fpt-admission-dashboard-dev
+    container_name: fpt-dashboard-dev
     restart: unless-stopped
     ports:
       - "${PORT:-3333}:3333"
     networks:
-      - dev
+      - fpt-net-fe-dev
 
 networks:
-  dev:
+  fpt-net-fe-dev:
+    name: fpt-net-fe-dev
     driver: bridge
