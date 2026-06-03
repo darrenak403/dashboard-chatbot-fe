@@ -6,9 +6,16 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Bảng Điều Khiển Quản Trị",
+  title: {
+    default: "FPT Admission — Quản trị",
+    template: "%s | FPT Admission",
+  },
   description:
-    "Bảng điều khiển quản trị để quản lý khoa, chương trình và cơ sở",
+    "Bảng điều khiển quản trị tuyển sinh FPT — khoa, chương trình, cơ sở, học phí",
+  icons: {
+    icon: [{ url: "/Logo-FPT-1024x620.webp", type: "image/webp" }],
+    apple: "/Logo-FPT-1024x620.webp",
+  },
 };
 
 export default function RootLayout({
