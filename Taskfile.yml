@@ -1,0 +1,67 @@
+# Dev local only — VPS dùng Dokploy + Docker image
+version: "3"
+
+vars:
+  COMPOSE: docker/docker-compose.dev.yml
+  ENV: docker/.env
+
+tasks:
+  default:
+    desc: Danh sach lenh
+    cmds:
+      - task --list
+
+  setup:
+    desc: Lan dau - bun install, docker/.env
+    cmds:
+      - bun install
+      - test -f {{.ENV}} || cp docker/.env.example {{.ENV}}
+      - echo "Xong. Chay task dev"
+
+  dev:
+    desc: Chay Next.js dev port 3000
+    dotenv:
+      - "{{.ENV}}"
+    preconditions:
+      - sh: test -f {{.ENV}}
+        msg: "Chay task setup truoc"
+    cmds:
+      - bun run dev
+
+  build:
+    desc: Build static export (out/)
+    dotenv:
+      - "{{.ENV}}"
+    cmds:
+      - bun run build
+
+  preview:
+    desc: Serve thu muc out/ (sau task build)
+    cmds:
+      - bun run preview
+
+  lint:
+    desc: ESLint
+    cmds:
+      - bun run lint
+
+  type-check:
+    desc: TypeScript
+    cmds:
+      - bun run type-check
+
+  fix:
+    desc: Lint + typecheck
+    cmds:
+      - bun run lint
+      - bun run type-check
+
+  docker:up:
+    desc: Preview image Docker (profile app)
+    cmds:
+      - docker compose -f {{.COMPOSE}} --env-file {{.ENV}} --profile app up -d
+
+  docker:down:
+    desc: Tat container preview
+    cmds:
+      - docker compose -f {{.COMPOSE}} --env-file {{.ENV}} --profile app down

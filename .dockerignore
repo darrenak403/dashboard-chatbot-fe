@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Environment files
+.env*
+docker/.env
+!docker/.env.example
+
+# Development files
+.git/
+.gitignore
+README.md
+DEPLOYMENT.md
+CHANGELOG.md
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# IDE files
+.vscode/
+.idea/
+.bolt/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/

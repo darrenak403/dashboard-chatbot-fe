@@ -1,0 +1,32 @@
+# Production: static dashboard (nginx)
+#
+# GitHub Actions push:  ${DOCKER_USERNAME}/fpt-admission-dashboard:latest
+# Dokploy: compose file này + env trên UI (không cần docker/.env trên VPS)
+#
+# Biến bắt buộc: DOCKER_USERNAME
+# Tùy chọn: APP_TAG (default latest), PORT (default 3000)
+#
+# NEXT_PUBLIC_* được bake lúc build image (GitHub Actions build-args / secrets).
+
+name: fpt-admission-dashboard-prod
+
+services:
+  app:
+    image: ${DOCKER_USERNAME}/fpt-admission-dashboard:${APP_TAG:-latest}
+    pull_policy: always
+    container_name: fpt-admission-dashboard-prod
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    driver: bridge
