@@ -40,7 +40,7 @@ APP_TAG=latest
 PORT=3333
 ```
 
-`NEXT_PUBLIC_*` cấu hình trên **GitHub Actions secrets** (build image), không đổi runtime trên container.
+`NEXT_PUBLIC_API_BASE_URL` cấu hình trong **workflow env** (`.github/workflows/deploy.yml`), bake lúc build image.
 
 Registry credentials Dokploy: `DOCKER_USERNAME` + `DOCKER_PASSWORD`.
 

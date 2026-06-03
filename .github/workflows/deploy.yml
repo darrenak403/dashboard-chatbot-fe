@@ -14,9 +14,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 # Secrets: DOCKER_USERNAME, DOCKER_PASSWORD
-# Tùy chọn (bake lúc build): NEXT_PUBLIC_API_BASE_URL
+# Sửa NEXT_PUBLIC_API_BASE_URL bên dưới trước khi deploy prod
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fpt-admission-dashboard
+  NEXT_PUBLIC_API_BASE_URL: https://fpt-api.bean9.net
 
 jobs:
   test:
@@ -84,4 +85,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }}
