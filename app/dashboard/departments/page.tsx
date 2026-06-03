@@ -59,6 +59,7 @@ import {
   CreateDepartmentRequest,
   UpdateDepartmentRequest,
 } from "@/lib/auth";
+import { API_ENDPOINTS } from "@/lib/constants";
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -199,7 +200,7 @@ export default function DepartmentsPage() {
     try {
       // First check if department has any programs
       const programsResponse = await fetch(
-        `https://core-tuyensinh-production.up.railway.app/api/v1/programs?department_code=${deletingDepartment.code}&limit=1&offset=0`
+        `${API_ENDPOINTS.PROGRAMS}?department_code=${deletingDepartment.code}&limit=1&offset=0`
       );
 
       if (programsResponse.ok) {

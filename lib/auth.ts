@@ -1,6 +1,4 @@
-import { API_ENDPOINTS } from './constants';
-
-const API_BASE_URL = 'https://core-tuyensinh-production.up.railway.app/api/v1';
+import { API_ENDPOINTS, API_V1_URL } from './constants';
 
 
 
@@ -207,7 +205,7 @@ class AuthService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${API_V1_URL}${endpoint}`;
     const token = this.getToken();
 
     const response = await fetch(url, {
@@ -398,101 +396,6 @@ class AuthService {
     this.removeToken();
   }
 
-  // Knowledge API methods
-  async uploadDocument(file: File): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch(API_ENDPOINTS.KNOWLEDGE_UPLOAD, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: Tải lên tài liệu thất bại`;
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
-  }
-
-  async getDocuments(): Promise<KnowledgeDocument[]> {
-    const response = await fetch(API_ENDPOINTS.KNOWLEDGE_DOCUMENTS, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: Không thể tải danh sách tài liệu`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-
-    // API trả về string hoặc array, cần xử lý phù hợp
-    if (typeof data === 'string') {
-      try {
-        // Nếu là string JSON, parse nó
-        const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed.map(this.mapDocumentData) : [];
-      } catch {
-        // Nếu không parse được, trả về empty array
-        return [];
-      }
-    }
-
-    // Nếu đã là array, map data và trả về
-    return Array.isArray(data) ? data.map(this.mapDocumentData) : [];
-  }
-
-  private mapDocumentData(doc: any): KnowledgeDocument {
-    return {
-      path: doc.filename || doc.path, // API trả về filename, fallback to path
-      exists: doc.exists,
-      size: doc.size,
-      filename: doc.filename || doc.path, // API field
-      modified: doc.modified, // API field
-    };
-  }
-
-  async deleteDocument(filename: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_ENDPOINTS.KNOWLEDGE_DOCUMENTS}/${encodeURIComponent(filename)}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: Xóa tài liệu thất bại`;
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
-  }
-
-  async getKnowledgeStatus(): Promise<KnowledgeStatus> {
-    const response = await fetch(API_ENDPOINTS.KNOWLEDGE_STATUS, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: Không thể tải trạng thái kiến thức`;
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
-  }
-
   // Tuition API methods
   async getTuitionFees(params?: {
     program_code?: string;
@@ -508,7 +411,7 @@ class AuthService {
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.offset) searchParams.append('offset', params.offset.toString());
 
-    const response = await fetch(`${API_BASE_URL}/tuition?${searchParams}`, {
+    const response = await fetch(`${API_ENDPOINTS.TUITION}?${searchParams}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -532,7 +435,7 @@ class AuthService {
     if (params?.program_code) searchParams.append('program_code', params.program_code);
     if (params?.year) searchParams.append('year', params.year.toString());
 
-    const response = await fetch(`${API_BASE_URL}/tuition/comparison?${searchParams}`, {
+    const response = await fetch(`${API_ENDPOINTS.TUITION}/comparison?${searchParams}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -561,7 +464,7 @@ class AuthService {
     semester_group_4_6_fee: number;
     semester_group_7_9_fee: number;
   }): Promise<{ data: TuitionFee }> {
-    const response = await fetch(`${API_BASE_URL}/tuition`, {
+    const response = await fetch(`${API_ENDPOINTS.TUITION}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -588,7 +491,7 @@ class AuthService {
     semester_group_7_9_fee?: number;
     is_active?: boolean;
   }): Promise<{ data: TuitionFee }> {
-    const response = await fetch(`${API_BASE_URL}/tuition/${id}`, {
+    const response = await fetch(`${API_ENDPOINTS.TUITION}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -607,7 +510,7 @@ class AuthService {
 
   // Delete tuition record
   async deleteTuitionRecord(id: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/tuition/${id}`, {
+    const response = await fetch(`${API_ENDPOINTS.TUITION}/${id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${this.getToken()}`,
@@ -1120,30 +1023,6 @@ class AuthService {
 
     return await response.json();
   }
-}
-
-// Knowledge interfaces
-export interface KnowledgeDocument {
-  path: string;
-  exists: boolean;
-  size: number;
-  filename?: string; // API field
-  modified?: string; // API field - timestamp
-}
-
-export interface KnowledgeStatus {
-  exists: boolean;
-  type: string;
-  path: string;
-  document_count: number;
-}
-
-export interface UploadResponse {
-  message: string;
-  file_path: string;
-  file_size: number;
-  processing_status: string;
-  agno_optimized: boolean;
 }
 
 // Scholarship interfaces

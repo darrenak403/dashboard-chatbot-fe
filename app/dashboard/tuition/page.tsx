@@ -21,6 +21,7 @@ import {
   Program,
   Campus,
 } from "@/lib/auth";
+import { API_ENDPOINTS } from "@/lib/constants";
 
 export default function TuitionPage() {
   // Main data states
@@ -100,11 +101,9 @@ export default function TuitionPage() {
       console.log("Fetching dropdown data from new APIs...");
 
       const [programsResponse, campusesResponse] = await Promise.all([
+        fetch(`${API_ENDPOINTS.PROGRAMS}?limit=100&offset=0`),
         fetch(
-          "https://core-tuyensinh-production.up.railway.app/api/v1/programs?limit=100&offset=0"
-        ),
-        fetch(
-          `https://core-tuyensinh-production.up.railway.app/api/v1/campuses?limit=100&offset=0&year=${selectedYear}`
+          `${API_ENDPOINTS.CAMPUSES}?limit=100&offset=0&year=${selectedYear}`
         ),
       ]);
 

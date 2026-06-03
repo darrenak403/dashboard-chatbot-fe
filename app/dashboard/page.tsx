@@ -34,7 +34,6 @@ interface DashboardStats {
   totalCampuses: number;
   totalStudents: number;
   totalTuitionPrograms: number;
-  totalKnowledgeDocs: number;
 }
 
 interface RecentActivity {

@@ -10,7 +10,7 @@ npm run dev
 # or
 bun run dev
 ```
-- Runs on `http://localhost:3000`
+- Runs on `http://localhost:3333`
 - Uses Bun for faster development experience
 
 ### Production Build
@@ -29,7 +29,7 @@ npm run preview
 npm run serve
 ```
 - Serves the static files from `/out` directory
-- Runs on `http://localhost:3000`
+- Runs on `http://localhost:3333`
 
 ## 📋 Available Scripts
 
@@ -109,9 +109,9 @@ npm run build
 ```
 
 ### Port Already in Use
-Dev/preview dùng cố định port **3000**. Nếu port bận, tắt process đang chiếm 3000 rồi chạy lại:
+Dev/preview dùng cố định port **3333**. Nếu port bận, tắt process đang chiếm 3333 rồi chạy lại:
 ```bash
-lsof -ti :3000 | xargs kill -9
+lsof -ti :3333 | xargs kill -9
 ```
 
 ### Clean Build

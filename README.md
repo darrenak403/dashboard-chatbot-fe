@@ -44,7 +44,7 @@ Dự án này là giao diện người dùng (Frontend) cho hệ thống Dashboa
     yarn start
     ```
 
-5. Truy cập ứng dụng tại [http://localhost:3000](http://localhost:3000)
+5. Truy cập ứng dụng tại [http://localhost:3333](http://localhost:3333)
 
 ## Cấu trúc thư mục
 

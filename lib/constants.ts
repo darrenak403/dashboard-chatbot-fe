@@ -1,6 +1,8 @@
-// API Configuration
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://core-tuyensinh-production.up.railway.app';
-export const KNOWLEDGE_API_BASE_URL = process.env.NEXT_PUBLIC_KNOWLEDGE_API_BASE_URL || 'https://agent-tuyensinh-production.up.railway.app/v1/api';
+// API — chỉ cấu hình qua NEXT_PUBLIC_API_BASE_URL (docker/.env hoặc CI build-arg)
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:2222';
+
+export const API_V1_URL = `${API_BASE_URL}/api/v1`;
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -8,42 +10,32 @@ export const API_ENDPOINTS = {
   DASHBOARD: `${API_BASE_URL}/dashboard`,
   DASHBOARD_STATS: `${API_BASE_URL}/dashboard/stats`,
   DASHBOARD_ANALYTICS: `${API_BASE_URL}/dashboard/analytics`,
-  
-  // Auth
-  LOGIN: `${API_BASE_URL}/auth/login`,
-  LOGOUT: `${API_BASE_URL}/auth/logout`,
-  PROFILE: `${API_BASE_URL}/auth/profile`,
-  
-  // Departments
-  DEPARTMENTS: `${API_BASE_URL}/api/v1/departments`,
-  
-  // Programs
-  PROGRAMS: `${API_BASE_URL}/api/v1/programs`,
-  
-  // Campuses
-  CAMPUSES: `${API_BASE_URL}/api/v1/campuses`,
-  
 
-  
+  // Auth
+  LOGIN: `${API_V1_URL}/auth/login`,
+  LOGOUT: `${API_V1_URL}/auth/logout`,
+  PROFILE: `${API_V1_URL}/auth/profile`,
+
+  // Departments
+  DEPARTMENTS: `${API_V1_URL}/departments`,
+
+  // Programs
+  PROGRAMS: `${API_V1_URL}/programs`,
+
+  // Campuses
+  CAMPUSES: `${API_V1_URL}/campuses`,
+
   // Tuition
-  TUITION: `${API_BASE_URL}/api/v1/tuition`,
+  TUITION: `${API_V1_URL}/tuition`,
 
   // Scholarships
-  SCHOLARSHIPS: `${API_BASE_URL}/api/v1/scholarships`,
+  SCHOLARSHIPS: `${API_V1_URL}/scholarships`,
 
   // Admission Methods
-  ADMISSION_METHODS: `${API_BASE_URL}/api/v1/admission-methods`,
+  ADMISSION_METHODS: `${API_V1_URL}/admission-methods`,
 
   // Users
-  USERS: `${API_BASE_URL}/api/v1/users`,
-
-  // Knowledge (Legacy - for dashboard stats)
-  KNOWLEDGE: `${API_BASE_URL}/api/v1/knowledge`,
-
-  // Knowledge API (Agno-optimized)
-  KNOWLEDGE_UPLOAD: `${KNOWLEDGE_API_BASE_URL}/knowledge/upload`,
-  KNOWLEDGE_DOCUMENTS: `${KNOWLEDGE_API_BASE_URL}/knowledge/documents`,
-  KNOWLEDGE_STATUS: `${KNOWLEDGE_API_BASE_URL}/knowledge/status`,
+  USERS: `${API_V1_URL}/users`,
 } as const;
 
 // Default pagination
@@ -75,7 +67,6 @@ export const ACTIVITY_TYPES = {
   CAMPUS_DELETED: 'campus_deleted',
   TUITION_ADDED: 'tuition_added',
   TUITION_UPDATED: 'tuition_updated',
-  KNOWLEDGE_UPDATED: 'knowledge_updated',
   USER_CREATED: 'user_created',
   USER_UPDATED: 'user_updated',
 } as const;
@@ -93,7 +84,6 @@ export const ACTIVITY_COLORS = {
   [ACTIVITY_TYPES.CAMPUS_DELETED]: 'bg-red-600',
   [ACTIVITY_TYPES.TUITION_ADDED]: 'bg-orange-600',
   [ACTIVITY_TYPES.TUITION_UPDATED]: 'bg-orange-500',
-  [ACTIVITY_TYPES.KNOWLEDGE_UPDATED]: 'bg-indigo-600',
   [ACTIVITY_TYPES.USER_CREATED]: 'bg-cyan-600',
   [ACTIVITY_TYPES.USER_UPDATED]: 'bg-cyan-500',
 } as const;
@@ -104,7 +94,6 @@ export const ICON_NAMES = {
   GRADUATION_CAP: 'GraduationCap',
   MAP_PIN: 'MapPin',
   USERS: 'Users',
-  BOOK_OPEN: 'BookOpen',
   DOLLAR_SIGN: 'DollarSign',
   ACTIVITY: 'Activity',
   TRENDING_UP: 'TrendingUp',
@@ -125,6 +114,5 @@ export const ROUTES = {
   SCHOLARSHIPS: '/dashboard/scholarships',
   ADMISSION_METHODS: '/dashboard/admission-methods',
   USERS: '/dashboard/users',
-  KNOWLEDGE: '/dashboard/knowledge',
   PROFILE: '/dashboard/profile',
 } as const;

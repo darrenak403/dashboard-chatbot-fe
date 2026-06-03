@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 # Secrets: DOCKER_USERNAME, DOCKER_PASSWORD
-# Tùy chọn (bake NEXT_PUBLIC_* lúc build): NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_KNOWLEDGE_API_BASE_URL
+# Tùy chọn (bake lúc build): NEXT_PUBLIC_API_BASE_URL
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fpt-admission-dashboard
 
@@ -81,4 +81,3 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-            NEXT_PUBLIC_KNOWLEDGE_API_BASE_URL=${{ secrets.NEXT_PUBLIC_KNOWLEDGE_API_BASE_URL }}

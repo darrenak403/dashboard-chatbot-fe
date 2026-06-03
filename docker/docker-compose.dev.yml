@@ -1,4 +1,4 @@
-# Dev: chạy FE trên host — task dev (port 3000)
+# Dev: chạy FE trên host — task dev (port 3333)
 # Preview image Docker local: docker compose -f docker/docker-compose.dev.yml --profile app up -d
 
 name: fpt-admission-dashboard-dev
@@ -11,7 +11,7 @@ services:
     container_name: fpt-admission-dashboard-dev
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3333}:3333"
     networks:
       - dev
 
