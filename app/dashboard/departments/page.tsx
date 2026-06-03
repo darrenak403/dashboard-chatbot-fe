@@ -602,7 +602,7 @@ export default function DepartmentsPage() {
               <AlertDialogDescription className="space-y-2">
                 <p>
                   Bạn có chắc chắn muốn xóa khoa{" "}
-                  <strong>"{deletingDepartment?.name}"</strong>?
+                  <strong>{deletingDepartment?.name}</strong>?
                 </p>
                 <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                   <p className="text-yellow-800 text-sm">

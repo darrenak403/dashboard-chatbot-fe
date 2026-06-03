@@ -656,8 +656,9 @@ export default function ProgramsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Bạn có chắc chắn?</AlertDialogTitle>
               <AlertDialogDescription>
-                Hành động này sẽ xóa chương trình "{deletingProgram?.name}".
-                Hành động này không thể hoàn tác.
+                Hành động này sẽ xóa chương trình{" "}
+                <strong>{deletingProgram?.name}</strong>. Hành động này không
+                thể hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

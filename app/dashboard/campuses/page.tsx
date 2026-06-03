@@ -697,8 +697,9 @@ export default function CampusesPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Bạn có chắc chắn?</AlertDialogTitle>
               <AlertDialogDescription>
-                Hành động này sẽ xóa cơ sở "{deletingCampus?.name}". Hành động
-                này không thể hoàn tác.
+                Hành động này sẽ xóa cơ sở{" "}
+                <strong>{deletingCampus?.name}</strong>. Hành động này không
+                thể hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
