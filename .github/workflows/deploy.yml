@@ -9,6 +9,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: fpt-admission-dashboard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
+
 # Secrets: DOCKER_USERNAME, DOCKER_PASSWORD
 # Tùy chọn (bake lúc build): NEXT_PUBLIC_API_BASE_URL
 env:
