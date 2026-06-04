@@ -36,6 +36,13 @@ export const API_ENDPOINTS = {
 
   // Users
   USERS: `${API_V1_URL}/users`,
+
+  // FAQ
+  FAQ_TOPICS: `${API_V1_URL}/faq/topics`,
+  FAQ_SUB_TOPICS: `${API_V1_URL}/faq/sub-topics`,
+  FAQ_QUESTIONS: `${API_V1_URL}/faq/questions`,
+  FAQ_ANSWERS: `${API_V1_URL}/faq/answers`,
+  FAQ_COLLECTIONS: `${API_V1_URL}/faq/collections`,
 } as const;
 
 // Default pagination
@@ -115,4 +122,9 @@ export const ROUTES = {
   ADMISSION_METHODS: '/dashboard/admission-methods',
   USERS: '/dashboard/users',
   PROFILE: '/dashboard/profile',
+  FAQ_TOPICS: '/dashboard/faq/topics',
+  FAQ_SUB_TOPICS: '/dashboard/faq/sub-topics',
+  FAQ_QUESTIONS: '/dashboard/faq/questions',
+  FAQ_ANSWERS: '/dashboard/faq/answers',
+  FAQ_COLLECTIONS: '/dashboard/faq/collections',
 } as const;

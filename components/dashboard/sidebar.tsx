@@ -21,6 +21,11 @@ import {
   Award,
   FileText,
   ChevronRight,
+  FolderOpen,
+  Folder,
+  HelpCircle,
+  CheckSquare,
+  BookOpen,
 } from "lucide-react";
 import { authService, User as UserType } from "@/lib/auth";
 
@@ -46,6 +51,14 @@ const navigationGroups = [
         href: "/dashboard/admission-methods",
         icon: FileText,
       },
+    ],
+  },
+  {
+    name: "Câu Hỏi FAQ",
+    items: [
+      { name: "Chủ Đề & Chủ Đề Con", href: "/dashboard/faq/topics", icon: FolderOpen },
+      { name: "Câu Hỏi & Câu Trả Lời", href: "/dashboard/faq/questions", icon: HelpCircle },
+      { name: "Bộ Sưu Tập", href: "/dashboard/faq/collections", icon: BookOpen },
     ],
   },
   {
@@ -167,7 +180,13 @@ export default function Sidebar({ className }: SidebarProps) {
               {(!collapsedGroups.has(group.name) || isCollapsed) && (
                 <div className="space-y-1">
                   {group.items.map((item) => {
-                    const isActive = pathname === item.href;
+                    const faqTopicsAliases = ["/dashboard/faq/sub-topics"];
+                    const faqQuestionsAliases = ["/dashboard/faq/answers"];
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) ||
+                      (item.href === "/dashboard/faq/topics" && faqTopicsAliases.some((a) => pathname.startsWith(a))) ||
+                      (item.href === "/dashboard/faq/questions" && faqQuestionsAliases.some((a) => pathname.startsWith(a)));
                     return (
                       <Link key={item.name} href={item.href}>
                         <Button
