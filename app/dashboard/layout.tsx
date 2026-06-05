@@ -48,11 +48,11 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 p-6 relative">
+        <main className="relative min-h-0 flex-1 overflow-y-auto p-6">
           {/* Background decoration */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 blur-3xl"></div>

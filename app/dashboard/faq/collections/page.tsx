@@ -64,10 +64,10 @@ import {
 } from "lucide-react";
 import {
   faqCollectionsService,
-  faqAnswersService,
+  faqQuestionsService,
   FaqCollection,
   FaqCollectionItem,
-  FaqAnswer,
+  FaqQuestion,
   CollectionStatus,
   COLLECTION_STATUS_TRANSITIONS,
   STATUS_LABELS,
@@ -78,19 +78,10 @@ import { API_ENDPOINTS } from "@/lib/constants";
 
 const LIMIT = 10;
 
-async function fetchAllCampuses(token: string | null): Promise<Campus[]> {
-  const res = await fetch(`${API_ENDPOINTS.CAMPUSES}?limit=100`, {
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.data || [];
-}
 
 export default function FaqCollectionsPage() {
   const router = useRouter();
   const [collections, setCollections] = useState<FaqCollection[]>([]);
-  const [campuses, setCampuses] = useState<Campus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -107,14 +98,13 @@ export default function FaqCollectionsPage() {
     name: "",
     description: "",
     admission_year: new Date().getFullYear(),
-    campus_id: "",
   });
 
   // Items dialog
   const [isItemsDialogOpen, setIsItemsDialogOpen] = useState(false);
   const [itemsCollection, setItemsCollection] = useState<FaqCollection | null>(null);
   const [collectionItems, setCollectionItems] = useState<FaqCollectionItem[]>([]);
-  const [availableAnswers, setAvailableAnswers] = useState<FaqAnswer[]>([]);
+  const [availableQuestions, setAvailableQuestions] = useState<FaqQuestion[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
   // Status dialog
@@ -126,10 +116,6 @@ export default function FaqCollectionsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingCollection, setDeletingCollection] = useState<FaqCollection | null>(null);
 
-  useEffect(() => {
-    const token = authService.getToken();
-    fetchAllCampuses(token).then(setCampuses).catch(() => {});
-  }, []);
 
   const fetchCollections = useCallback(async (page: number = 1) => {
     try {
@@ -143,7 +129,7 @@ export default function FaqCollectionsPage() {
       setMeta(res.meta);
       setCurrentPage(page);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Không thể tải bộ sưu tập";
+      const msg = err instanceof Error ? err.message : "Không thể tải bộ câu hỏi";
       setError(msg);
       if (msg.includes("401")) { authService.logout(); router.push("/login"); }
     }
@@ -162,7 +148,7 @@ export default function FaqCollectionsPage() {
 
   const openCreate = () => {
     setEditingCollection(null);
-    setFormData({ name: "", description: "", admission_year: new Date().getFullYear(), campus_id: "" });
+    setFormData({ name: "", description: "", admission_year: new Date().getFullYear() });
     setIsDialogOpen(true);
   };
 
@@ -172,7 +158,6 @@ export default function FaqCollectionsPage() {
       name: c.name,
       description: c.description,
       admission_year: c.admission_year,
-      campus_id: c.campus_id || "",
     });
     setIsDialogOpen(true);
   };
@@ -182,14 +167,14 @@ export default function FaqCollectionsPage() {
     setIsLoadingItems(true);
     setIsItemsDialogOpen(true);
     try {
-      const [detail, answersRes] = await Promise.all([
+      const [detail, questionsRes] = await Promise.all([
         faqCollectionsService.get(c.id),
-        faqAnswersService.list({ limit: 100, status: "published" }),
+        faqQuestionsService.list({ limit: 100, status: "approved" }),
       ]);
       setCollectionItems(detail.data.items || []);
-      setAvailableAnswers(answersRes.data);
+      setAvailableQuestions(questionsRes.data);
     } catch {
-      toast.error("Không thể tải nội dung bộ sưu tập");
+      toast.error("Không thể tải nội dung bộ câu hỏi");
     } finally {
       setIsLoadingItems(false);
     }
@@ -215,14 +200,13 @@ export default function FaqCollectionsPage() {
         name: formData.name,
         description: formData.description,
         admission_year: formData.admission_year,
-        ...(formData.campus_id ? { campus_id: formData.campus_id } : {}),
       };
       if (editingCollection) {
         await faqCollectionsService.update(editingCollection.id, payload);
-        toast.success("Cập nhật bộ sưu tập thành công");
+        toast.success("Cập nhật bộ câu hỏi thành công");
       } else {
         await faqCollectionsService.create(payload);
-        toast.success("Tạo bộ sưu tập thành công");
+        toast.success("Tạo bộ câu hỏi thành công");
       }
       setIsDialogOpen(false);
       await fetchCollections(currentPage);
@@ -233,20 +217,19 @@ export default function FaqCollectionsPage() {
     }
   };
 
-  const handleAddItem = async (answer: FaqAnswer) => {
+  const handleAddItem = async (question: FaqQuestion) => {
     if (!itemsCollection) return;
     try {
-      await faqCollectionsService.addItem(itemsCollection.id, answer.id);
-      // Optimistically add to list using answer_id
+      await faqCollectionsService.addItem(itemsCollection.id, question.id);
       const newItem: FaqCollectionItem = {
         id: crypto.randomUUID(),
         collection_id: itemsCollection.id,
-        answer_id: answer.id,
+        question_id: question.id,
         order_index: collectionItems.length,
-        answer,
+        question,
       };
       setCollectionItems((prev) => [...prev, newItem]);
-      toast.success("Đã thêm câu trả lời vào bộ sưu tập");
+      toast.success("Đã thêm câu hỏi vào bộ câu hỏi");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Thêm thất bại");
     }
@@ -255,10 +238,9 @@ export default function FaqCollectionsPage() {
   const handleRemoveItem = async (item: FaqCollectionItem) => {
     if (!itemsCollection) return;
     try {
-      // Backend URL: DELETE /collections/{id}/items/{answerId}
-      await faqCollectionsService.removeItem(itemsCollection.id, item.answer_id);
-      setCollectionItems((prev) => prev.filter((i) => i.answer_id !== item.answer_id));
-      toast.success("Đã xóa câu trả lời khỏi bộ sưu tập");
+      await faqCollectionsService.removeItem(itemsCollection.id, item.question_id);
+      setCollectionItems((prev) => prev.filter((i) => i.question_id !== item.question_id));
+      toast.success("Đã xóa câu hỏi khỏi bộ câu hỏi");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xóa thất bại");
     }
@@ -284,7 +266,7 @@ export default function FaqCollectionsPage() {
     setIsSubmitting(true);
     try {
       await faqCollectionsService.remove(deletingCollection.id);
-      toast.success(`Đã xóa bộ sưu tập "${deletingCollection.name}"`);
+      toast.success(`Đã xóa bộ câu hỏi "${deletingCollection.name}"`);
       setIsDeleteDialogOpen(false);
       setDeletingCollection(null);
       await fetchCollections(currentPage);
@@ -297,7 +279,7 @@ export default function FaqCollectionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(meta.total / LIMIT));
   const allowedTransitions = statusCollection ? COLLECTION_STATUS_TRANSITIONS[statusCollection.status] : [];
-  const itemAnswerIds = new Set(collectionItems.map((i) => i.answer_id));
+  const itemQuestionIds = new Set(collectionItems.map((i) => i.question_id));
 
   if (isLoading) {
     return (
@@ -314,9 +296,9 @@ export default function FaqCollectionsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
               <BookOpen className="h-8 w-8 mr-3 text-blue-600" />
-              Bộ Sưu Tập FAQ
+              Bộ Câu Hỏi FAQ
             </h1>
-            <p className="text-gray-600 mt-1">Quản lý bộ sưu tập câu hỏi - câu trả lời để xuất bản</p>
+            <p className="text-gray-600 mt-1">Quản lý bộ câu hỏi câu hỏi - câu trả lời để xuất bản</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline" size="sm">
@@ -325,7 +307,7 @@ export default function FaqCollectionsPage() {
             </Button>
             <Button size="sm" onClick={openCreate}>
               <Plus className="h-4 w-4 mr-2" />
-              Tạo Bộ Sưu Tập
+              Tạo Bộ Câu Hỏi
             </Button>
           </div>
         </div>
@@ -339,7 +321,7 @@ export default function FaqCollectionsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tổng Số Bộ Sưu Tập</CardTitle>
+              <CardTitle className="text-sm font-medium">Tổng Số Bộ Câu Hỏi</CardTitle>
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent><div className="text-2xl font-bold">{meta.total}</div></CardContent>
@@ -354,7 +336,7 @@ export default function FaqCollectionsPage() {
 
         {/* Filters */}
         <Card>
-          <CardHeader><CardTitle>Lọc Bộ Sưu Tập</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Lọc Bộ Câu Hỏi</CardTitle></CardHeader>
           <CardContent>
             <div className="flex items-center gap-3 flex-wrap">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -382,17 +364,16 @@ export default function FaqCollectionsPage() {
         {/* Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Danh Sách Bộ Sưu Tập</CardTitle>
-            <CardDescription>{meta.total} bộ sưu tập</CardDescription>
+            <CardTitle>Danh Sách Bộ Câu Hỏi</CardTitle>
+            <CardDescription>{meta.total} bộ câu hỏi</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[35%]">Tên / Mô Tả</TableHead>
+                    <TableHead className="w-[45%]">Tên / Mô Tả</TableHead>
                     <TableHead>Năm</TableHead>
-                    <TableHead>Cơ Sở</TableHead>
                     <TableHead>Trạng Thái</TableHead>
                     <TableHead className="text-right">Thao Tác</TableHead>
                   </TableRow>
@@ -400,8 +381,8 @@ export default function FaqCollectionsPage() {
                 <TableBody>
                   {collections.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        Không có bộ sưu tập nào.
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                        Không có bộ câu hỏi nào.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -418,13 +399,6 @@ export default function FaqCollectionsPage() {
                           </div>
                         </TableCell>
                         <TableCell>{c.admission_year}</TableCell>
-                        <TableCell>
-                          {c.campus ? (
-                            <Badge variant="outline">{c.campus.name}</Badge>
-                          ) : (
-                            <span className="text-gray-400 text-xs">Tất cả</span>
-                          )}
-                        </TableCell>
                         <TableCell>
                           <Badge className={STATUS_BADGE_CLASS[c.status] || "bg-gray-100 text-gray-700"}>
                             {STATUS_LABELS[c.status] || c.status}
@@ -488,20 +462,20 @@ export default function FaqCollectionsPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingCollection ? "Chỉnh Sửa Bộ Sưu Tập" : "Tạo Bộ Sưu Tập Mới"}</DialogTitle>
+              <DialogTitle>{editingCollection ? "Chỉnh Sửa Bộ Câu Hỏi" : "Tạo Bộ Câu Hỏi Mới"}</DialogTitle>
               <DialogDescription>
-                {editingCollection ? "Cập nhật thông tin bộ sưu tập." : "Tạo bộ sưu tập mới để nhóm các câu trả lời FAQ."}
+                {editingCollection ? "Cập nhật thông tin bộ câu hỏi." : "Tạo bộ câu hỏi mới để nhóm các câu trả lời FAQ."}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="col_name">Tên Bộ Sưu Tập *</Label>
+                  <Label htmlFor="col_name">Tên Bộ Câu Hỏi *</Label>
                   <Input
                     id="col_name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Nhập tên bộ sưu tập"
+                    placeholder="Nhập tên bộ câu hỏi"
                     required
                   />
                 </div>
@@ -511,40 +485,21 @@ export default function FaqCollectionsPage() {
                     id="col_desc"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Mô tả về bộ sưu tập..."
+                    placeholder="Mô tả về bộ câu hỏi..."
                     rows={3}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="col_year">Năm Tuyển Sinh *</Label>
-                    <Input
-                      id="col_year"
-                      type="number"
-                      value={formData.admission_year}
-                      onChange={(e) => setFormData({ ...formData, admission_year: Number(e.target.value) })}
-                      min={2020}
-                      max={2030}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cơ Sở (tùy chọn)</Label>
-                    <Select
-                      value={formData.campus_id || "none"}
-                      onValueChange={(v) => setFormData({ ...formData, campus_id: v === "none" ? "" : v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tất cả cơ sở" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Tất cả cơ sở</SelectItem>
-                        {campuses.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="col_year">Năm Tuyển Sinh *</Label>
+                  <Input
+                    id="col_year"
+                    type="number"
+                    value={formData.admission_year}
+                    onChange={(e) => setFormData({ ...formData, admission_year: Number(e.target.value) })}
+                    min={2020}
+                    max={2030}
+                    required
+                  />
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
               </div>
@@ -564,7 +519,7 @@ export default function FaqCollectionsPage() {
             <DialogHeader>
               <DialogTitle>Quản Lý Nội Dung: {itemsCollection?.name}</DialogTitle>
               <DialogDescription>
-                Thêm hoặc xóa câu trả lời khỏi bộ sưu tập này.
+                Thêm hoặc xóa câu trả lời khỏi bộ câu hỏi này.
               </DialogDescription>
             </DialogHeader>
             {isLoadingItems ? (
@@ -576,17 +531,17 @@ export default function FaqCollectionsPage() {
                 {/* Current items */}
                 <div className="flex flex-col">
                   <h4 className="font-semibold text-sm mb-2 text-gray-700">
-                    Câu trả lời trong bộ sưu tập ({collectionItems.length})
+                    Câu hỏi trong bộ câu hỏi ({collectionItems.length})
                   </h4>
                   <Separator className="mb-2" />
                   <div className="overflow-y-auto flex-1 space-y-2 pr-1">
                     {collectionItems.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">Chưa có câu trả lời nào</p>
+                      <p className="text-sm text-gray-400 py-4 text-center">Chưa có câu hỏi nào</p>
                     ) : (
                       collectionItems.map((item) => (
                         <div key={item.id} className="flex items-start justify-between p-2 rounded border bg-gray-50 gap-2">
                           <p className="text-sm flex-1 line-clamp-2">
-                            {item.answer?.content || availableAnswers.find((a) => a.id === item.answer_id)?.content || item.answer_id}
+                            {item.question?.content || item.question_id}
                           </p>
                           <Button
                             variant="ghost"
@@ -602,26 +557,26 @@ export default function FaqCollectionsPage() {
                   </div>
                 </div>
 
-                {/* Available answers */}
+                {/* Available questions */}
                 <div className="flex flex-col">
                   <h4 className="font-semibold text-sm mb-2 text-gray-700">
-                    Câu trả lời đã xuất bản ({availableAnswers.filter((a) => !itemAnswerIds.has(a.id)).length} khả dụng)
+                    Câu hỏi đã duyệt ({availableQuestions.filter((q) => !itemQuestionIds.has(q.id)).length} khả dụng)
                   </h4>
                   <Separator className="mb-2" />
                   <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                    {availableAnswers.filter((a) => !itemAnswerIds.has(a.id)).length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">Không có câu trả lời khả dụng</p>
+                    {availableQuestions.filter((q) => !itemQuestionIds.has(q.id)).length === 0 ? (
+                      <p className="text-sm text-gray-400 py-4 text-center">Không có câu hỏi khả dụng</p>
                     ) : (
-                      availableAnswers
-                        .filter((a) => !itemAnswerIds.has(a.id))
-                        .map((answer) => (
-                          <div key={answer.id} className="flex items-start justify-between p-2 rounded border hover:bg-blue-50 gap-2">
-                            <p className="text-sm flex-1 line-clamp-2">{answer.content}</p>
+                      availableQuestions
+                        .filter((q) => !itemQuestionIds.has(q.id))
+                        .map((question) => (
+                          <div key={question.id} className="flex items-start justify-between p-2 rounded border hover:bg-blue-50 gap-2">
+                            <p className="text-sm flex-1 line-clamp-2">{question.content}</p>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-blue-600 hover:text-blue-800 flex-shrink-0 h-6 px-2 text-xs"
-                              onClick={() => handleAddItem(answer)}
+                              onClick={() => handleAddItem(question)}
                             >
                               + Thêm
                             </Button>
@@ -678,9 +633,9 @@ export default function FaqCollectionsPage() {
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Xác nhận xóa bộ sưu tập</AlertDialogTitle>
+              <AlertDialogTitle>Xác nhận xóa bộ câu hỏi</AlertDialogTitle>
               <AlertDialogDescription>
-                Bạn có chắc muốn xóa bộ sưu tập <strong>{deletingCollection?.name}</strong>? Hành động này không thể hoàn tác.
+                Bạn có chắc muốn xóa bộ câu hỏi <strong>{deletingCollection?.name}</strong>? Hành động này không thể hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

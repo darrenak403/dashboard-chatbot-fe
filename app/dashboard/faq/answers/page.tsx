@@ -75,7 +75,7 @@ import { API_ENDPOINTS } from "@/lib/constants";
 
 const LIMIT = 10;
 
-const ANSWER_STATUSES: AnswerStatus[] = ["new", "approved", "rejected", "published", "updated", "re_approved"];
+const ANSWER_STATUSES: AnswerStatus[] = ["new", "approved", "rejected", "deleted"];
 
 async function fetchAllCampuses(token: string | null): Promise<Campus[]> {
   const res = await fetch(`${API_ENDPOINTS.CAMPUSES}?limit=100`, {
@@ -96,7 +96,6 @@ export default function FaqAnswersPage() {
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCampusId, setFilterCampusId] = useState("all");
-  const [filterYear, setFilterYear] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, limit: LIMIT, offset: 0, has_next: false, has_prev: false });
 
@@ -107,7 +106,6 @@ export default function FaqAnswersPage() {
   const [formData, setFormData] = useState({
     question_id: "",
     content: "",
-    admission_year: new Date().getFullYear(),
     tags: "",
     keywords: "",
     synonyms: "",
@@ -141,7 +139,6 @@ export default function FaqAnswersPage() {
       const params: Parameters<typeof faqAnswersService.list>[0] = { limit: LIMIT, offset };
       if (filterStatus !== "all") params.status = filterStatus;
       if (filterCampusId !== "all") params.campus_id = filterCampusId;
-      if (filterYear) params.admission_year = Number(filterYear);
       const res = await faqAnswersService.list(params);
       setAnswers(res.data);
       setMeta(res.meta);
@@ -151,7 +148,7 @@ export default function FaqAnswersPage() {
       setError(msg);
       if (msg.includes("401")) { authService.logout(); router.push("/login"); }
     }
-  }, [filterStatus, filterCampusId, filterYear, router]);
+  }, [filterStatus, filterCampusId, router]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -166,7 +163,7 @@ export default function FaqAnswersPage() {
 
   const openCreate = () => {
     setEditingAnswer(null);
-    setFormData({ question_id: "", content: "", admission_year: new Date().getFullYear(), tags: "", keywords: "", synonyms: "" });
+    setFormData({ question_id: "", content: "", tags: "", keywords: "", synonyms: "" });
     setIsDialogOpen(true);
   };
 
@@ -175,7 +172,6 @@ export default function FaqAnswersPage() {
     setFormData({
       question_id: a.question_id,
       content: a.content,
-      admission_year: a.admission_year,
       tags: (a.tags || []).join(", "),
       keywords: (a.keywords || []).join(", "),
       synonyms: (a.synonyms || []).join(", "),
@@ -213,7 +209,6 @@ export default function FaqAnswersPage() {
       const payload = {
         question_id: formData.question_id,
         content: formData.content,
-        admission_year: formData.admission_year,
         tags: splitTags(formData.tags),
         keywords: splitTags(formData.keywords),
         synonyms: splitTags(formData.synonyms),
@@ -372,13 +367,6 @@ export default function FaqAnswersPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                placeholder="Năm tuyển sinh"
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                className="w-40"
-              />
             </div>
           </CardContent>
         </Card>
@@ -394,8 +382,7 @@ export default function FaqAnswersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[35%]">Nội Dung</TableHead>
-                    <TableHead>Năm</TableHead>
+                    <TableHead className="w-[45%]">Nội Dung</TableHead>
                     <TableHead>Cơ Sở</TableHead>
                     <TableHead>Trạng Thái</TableHead>
                     <TableHead>Phiên Bản</TableHead>
@@ -405,7 +392,7 @@ export default function FaqAnswersPage() {
                 <TableBody>
                   {answers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Không có câu trả lời nào.
                       </TableCell>
                     </TableRow>
@@ -415,7 +402,6 @@ export default function FaqAnswersPage() {
                         <TableCell className="max-w-xs">
                           <p className="truncate" title={a.content}>{a.content}</p>
                         </TableCell>
-                        <TableCell>{a.admission_year}</TableCell>
                         <TableCell>
                           {(a.campus_ids || []).length === 0 ? (
                             <span className="text-gray-400 text-xs">Tất cả</span>
@@ -513,18 +499,6 @@ export default function FaqAnswersPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="a_year">Năm Tuyển Sinh *</Label>
-                  <Input
-                    id="a_year"
-                    type="number"
-                    value={formData.admission_year}
-                    onChange={(e) => setFormData({ ...formData, admission_year: Number(e.target.value) })}
-                    min={2020}
-                    max={2030}
-                    required
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="a_content">Nội Dung Trả Lời *</Label>

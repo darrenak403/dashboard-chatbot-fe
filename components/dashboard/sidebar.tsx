@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Home,
   Building2,
@@ -58,7 +57,7 @@ const navigationGroups = [
     items: [
       { name: "Chủ Đề & Chủ Đề Con", href: "/dashboard/faq/topics", icon: FolderOpen },
       { name: "Câu Hỏi & Câu Trả Lời", href: "/dashboard/faq/questions", icon: HelpCircle },
-      { name: "Bộ Sưu Tập", href: "/dashboard/faq/collections", icon: BookOpen },
+      { name: "Bộ Câu Hỏi", href: "/dashboard/faq/collections", icon: BookOpen },
     ],
   },
   {
@@ -104,7 +103,7 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex min-h-screen flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
+        "flex h-screen shrink-0 flex-col overflow-hidden bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
         isCollapsed ? "w-16" : "w-64",
         className
       )}
@@ -153,13 +152,13 @@ export default function Sidebar({ className }: SidebarProps) {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="space-y-6">
+      <nav className="min-h-0 flex-1 overflow-hidden px-2 py-2">
+        <div className="space-y-2.5">
           {navigationGroups.map((group) => (
-            <div key={group.name} className="space-y-2">
+            <div key={group.name} className="space-y-0.5">
               {!isCollapsed && (
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
+                  <h3 className="px-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     {group.name}
                   </h3>
                   <Button
@@ -178,7 +177,7 @@ export default function Sidebar({ className }: SidebarProps) {
               )}
 
               {(!collapsedGroups.has(group.name) || isCollapsed) && (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const faqTopicsAliases = ["/dashboard/faq/sub-topics"];
                     const faqQuestionsAliases = ["/dashboard/faq/answers"];
@@ -193,11 +192,11 @@ export default function Sidebar({ className }: SidebarProps) {
                           variant={isActive ? "default" : "ghost"}
                           className={cn(
                             "w-full justify-start transition-all duration-200",
-                            isCollapsed ? "px-2 h-10" : "px-3 h-9",
+                            isCollapsed ? "px-2 h-9" : "px-2.5 h-8",
                             isActive
                               ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                               : "hover:bg-gray-100 text-gray-700",
-                            !isCollapsed && "text-sm"
+                            !isCollapsed && "text-[13px]"
                           )}
                           title={isCollapsed ? item.name : undefined}
                         >
@@ -219,29 +218,24 @@ export default function Sidebar({ className }: SidebarProps) {
               )}
             </div>
           ))}
-        </nav>
-      </ScrollArea>
+        </div>
+      </nav>
 
-      <div className="p-3 border-t bg-gray-50">
+      <div className="shrink-0 border-t bg-gray-50 p-2">
         {!isCollapsed && user && (
-          <div className="mb-3 px-2">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-xs font-semibold text-white">
-                  {user.username.slice(0, 2).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.username}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.email || "user@fpt.edu.vn"}
-                </p>
-                <p className="text-xs text-blue-600 font-medium">
-                  {user.role === "super_admin" ? "Super Admin" : "Admin"}
-                </p>
-              </div>
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
+              <span className="text-[10px] font-semibold text-white">
+                {user.username.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-gray-900">
+                {user.username}
+              </p>
+              <p className="text-[10px] font-medium text-blue-600">
+                {user.role === "super_admin" ? "Super Admin" : "Admin"}
+              </p>
             </div>
           </div>
         )}
@@ -251,7 +245,7 @@ export default function Sidebar({ className }: SidebarProps) {
           onClick={handleLogout}
           className={cn(
             "w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors border border-red-200 hover:border-red-300",
-            isCollapsed ? "px-2 h-10" : "px-3 h-9"
+            isCollapsed ? "px-2 h-9" : "h-8 px-2.5"
           )}
           title={isCollapsed ? "Đăng Xuất" : undefined}
         >
