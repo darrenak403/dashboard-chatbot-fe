@@ -66,7 +66,9 @@ import {
   Loader2,
   MoveRight,
   MoreHorizontal,
+  Zap,
 } from "lucide-react";
+import FaqQuickAddDialog from "@/components/faq/FaqQuickAddDialog";
 import {
   faqQuestionsService,
   faqTopicsService,
@@ -173,6 +175,11 @@ function FaqQuestionsInner() {
   const [deletingAnswer, setDeletingAnswer] = useState<FaqAnswer | null>(null);
   const [aDeleteSubmitting, setADeleteSubmitting] = useState(false);
 
+  // Quick add
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddTopicId, setQuickAddTopicId] = useState("");
+  const [quickAddSubTopicId, setQuickAddSubTopicId] = useState("");
+
   // ── Init ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     faqTopicsService.list({ limit: 100, ...yearParams }).then((r) => setTopics(r.data)).catch(() => {});
@@ -258,6 +265,22 @@ function FaqQuestionsInner() {
   const resolveTopicIdForSubTopic = (subTopicId: string) => {
     const st = subTopics.find((s) => s.id === subTopicId);
     return st?.topic_id || st?.topic?.id || "";
+  };
+
+  const openQuickAdd = (defaults?: { topicId?: string; subTopicId?: string }) => {
+    setQuickAddTopicId(defaults?.topicId || "");
+    setQuickAddSubTopicId(
+      defaults?.subTopicId || (filterSubTopicId !== "all" ? filterSubTopicId : "")
+    );
+    if (!defaults?.topicId && filterSubTopicId !== "all") {
+      setQuickAddTopicId(resolveTopicIdForSubTopic(filterSubTopicId));
+    }
+    setIsQuickAddOpen(true);
+  };
+
+  const handleQuickAddSuccess = async () => {
+    await fetchQuestions(questionsPage);
+    if (selectedId) await fetchAnswers();
   };
 
   const openCreateQuestion = () => {
@@ -623,6 +646,17 @@ function FaqQuestionsInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FaqQuickAddDialog
+        open={isQuickAddOpen}
+        onOpenChange={setIsQuickAddOpen}
+        topics={topics}
+        subTopics={subTopics}
+        campuses={campuses}
+        onSuccess={handleQuickAddSuccess}
+        defaultTopicId={quickAddTopicId}
+        defaultSubTopicId={quickAddSubTopicId}
+      />
     </>
   );
 
@@ -675,6 +709,18 @@ function FaqQuestionsInner() {
             <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={fetchAnswers}>
                 <RefreshCw className="h-3.5 w-3.5" />Làm mới
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => openQuickAdd({
+                  topicId: selectedQuestion?.sub_topic?.topic?.id
+                    || (selectedQuestion ? resolveTopicIdForSubTopic(selectedQuestion.sub_topic_id) : ""),
+                  subTopicId: selectedQuestion?.sub_topic_id,
+                })}
+              >
+                <Zap className="h-3.5 w-3.5" />Add nhanh
               </Button>
               <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={openCreateAnswer}>
                 <Plus className="h-3.5 w-3.5" />Thêm câu trả lời
@@ -853,6 +899,9 @@ function FaqQuestionsInner() {
             <Button variant="outline" size="sm" className="gap-1.5"
               onClick={() => { setQuestionsLoading(true); fetchQuestions(questionsPage).finally(() => setQuestionsLoading(false)); }}>
               <RefreshCw className="h-3.5 w-3.5" />Làm mới
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openQuickAdd()}>
+              <Zap className="h-3.5 w-3.5" />Add nhanh
             </Button>
             <Button size="sm" className="gap-1.5" onClick={openCreateQuestion}>
               <Plus className="h-3.5 w-3.5" />Thêm câu hỏi

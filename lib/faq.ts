@@ -319,6 +319,127 @@ export const faqSubTopicsService = {
   },
 };
 
+// ─── Quick Add ────────────────────────────────────────────────────────────────
+
+export interface FaqQuickAddAnswerInput {
+  content: string;
+  campus_ids?: string[];
+  tags?: string[];
+  keywords?: string[];
+  synonyms?: string[];
+}
+
+export interface FaqQuickAddQuestionInput {
+  content: string;
+  answers: FaqQuickAddAnswerInput[];
+}
+
+export type FaqQuickAddPayload =
+  | {
+      topic_id: string;
+      sub_topic_id: string;
+      apply_all_campuses: boolean;
+      raw_text: string;
+    }
+  | {
+      topic_id: string;
+      sub_topic_id: string;
+      apply_all_campuses?: boolean;
+      default_campus_ids?: string[];
+      questions: FaqQuickAddQuestionInput[];
+    };
+
+export interface FaqQuickAddResult {
+  data: Array<{
+    question: FaqQuestion;
+    answers: FaqAnswer[];
+  }>;
+  meta: {
+    question_count: number;
+    answer_count: number;
+  };
+}
+
+export const FAQ_QUICK_ADD_ERROR =
+  'Không thể tạo nhanh FAQ. Vui lòng kiểm tra nội dung và thử lại.';
+
+const QUICK_ADD_QUESTION_LINE =
+  /^(?:Câu hỏi|Câu)\s*(\d+)\s*[:：]\s*(.*)$/i;
+const QUICK_ADD_ANSWER_LINE = /^Trả lời\s*(\d+)\s*[:：]\s*(.*)$/i;
+
+export function parseQuickAddRawText(rawText: string): FaqQuickAddQuestionInput[] {
+  const questions: FaqQuickAddQuestionInput[] = [];
+  let current: FaqQuickAddQuestionInput | null = null;
+
+  for (const line of rawText.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const qMatch = trimmed.match(QUICK_ADD_QUESTION_LINE);
+    if (qMatch) {
+      if (current) questions.push(current);
+      current = { content: qMatch[2].trim(), answers: [] };
+      continue;
+    }
+
+    const aMatch = trimmed.match(QUICK_ADD_ANSWER_LINE);
+    if (aMatch) {
+      if (!current) current = { content: '', answers: [] };
+      current.answers.push({ content: aMatch[2].trim() });
+      continue;
+    }
+
+    if (!current) continue;
+    if (current.answers.length > 0) {
+      const last = current.answers[current.answers.length - 1];
+      last.content = last.content ? `${last.content}\n${trimmed}` : trimmed;
+    } else {
+      current.content = current.content ? `${current.content}\n${trimmed}` : trimmed;
+    }
+  }
+
+  if (current) questions.push(current);
+  return questions.filter((q) => q.content.trim() || q.answers.length > 0);
+}
+
+function splitCsvField(value: string) {
+  return value.split(',').map((t) => t.trim()).filter(Boolean);
+}
+
+export function buildQuickAddStructuredPayload(
+  topicId: string,
+  subTopicId: string,
+  applyAllCampuses: boolean,
+  defaultCampusIds: string[],
+  questions: FaqQuickAddQuestionInput[]
+): Extract<FaqQuickAddPayload, { questions: FaqQuickAddQuestionInput[] }> {
+  const payload: Extract<FaqQuickAddPayload, { questions: FaqQuickAddQuestionInput[] }> = {
+    topic_id: topicId,
+    sub_topic_id: subTopicId,
+    questions: questions.map((q) => ({
+      content: q.content,
+      answers: q.answers.map((a) => {
+        const answer: FaqQuickAddAnswerInput = { content: a.content };
+        if (a.campus_ids?.length) answer.campus_ids = a.campus_ids;
+        if (a.tags?.length) answer.tags = a.tags;
+        if (a.keywords?.length) answer.keywords = a.keywords;
+        if (a.synonyms?.length) answer.synonyms = a.synonyms;
+        return answer;
+      }),
+    })),
+  };
+
+  if (applyAllCampuses) {
+    payload.apply_all_campuses = true;
+  } else if (defaultCampusIds.length > 0) {
+    payload.default_campus_ids = defaultCampusIds;
+  }
+
+  return payload;
+}
+
+export { splitCsvField as splitQuickAddCsvField };
+
 // ─── Questions ────────────────────────────────────────────────────────────────
 
 export const faqQuestionsService = {
@@ -367,6 +488,12 @@ export const faqQuestionsService = {
     return request<{ data: FaqQuestion }>(`${API_ENDPOINTS.FAQ_QUESTIONS}/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, ...(rejection_reason ? { rejection_reason } : {}) }),
+    });
+  },
+  quickAdd(data: FaqQuickAddPayload) {
+    return request<FaqQuickAddResult>(`${API_ENDPOINTS.FAQ_QUESTIONS}/quick-add`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   },
 };
