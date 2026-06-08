@@ -496,6 +496,12 @@ export const faqQuestionsService = {
       body: JSON.stringify(data),
     });
   },
+  approvePending() {
+    return request<{ message: string; approved_count: number }>(
+      `${API_ENDPOINTS.FAQ_QUESTIONS}/approve-pending`,
+      { method: 'PATCH' }
+    );
+  },
 };
 
 // ─── Answers ──────────────────────────────────────────────────────────────────
@@ -560,6 +566,12 @@ export const faqAnswersService = {
       method: 'PATCH',
       body: JSON.stringify({ status, ...(rejection_reason ? { rejection_reason } : {}) }),
     });
+  },
+  approvePending() {
+    return request<{ message: string; approved_count: number }>(
+      `${API_ENDPOINTS.FAQ_ANSWERS}/approve-pending`,
+      { method: 'PATCH' }
+    );
   },
 };
 
@@ -688,6 +700,12 @@ export const faqCollectionsService = {
     return request<{ message: string; inserted: number }>(
       `${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/items`,
       { method: 'POST', body: JSON.stringify({ question_ids: [question_id] }) }
+    );
+  },
+  addItemsBySubTopic(collectionId: string, sub_topic_id: string) {
+    return request<{ message: string; inserted: number; matched_count: number }>(
+      `${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/items/by-sub-topic`,
+      { method: 'POST', body: JSON.stringify({ sub_topic_id }) }
     );
   },
   removeItem(collectionId: string, questionId: string) {

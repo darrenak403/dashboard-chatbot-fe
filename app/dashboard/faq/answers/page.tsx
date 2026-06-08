@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import {
   CheckSquare,
+  CheckCircle2,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -93,6 +94,7 @@ export default function FaqAnswersPage() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isApprovingPending, setIsApprovingPending] = useState(false);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCampusId, setFilterCampusId] = useState("all");
@@ -278,6 +280,23 @@ export default function FaqAnswersPage() {
     }
   };
 
+  const handleApproveAllPending = async () => {
+    setIsApprovingPending(true);
+    try {
+      const res = await faqAnswersService.approvePending();
+      toast.success(
+        res.approved_count > 0
+          ? `Đã duyệt ${res.approved_count} câu trả lời`
+          : "Không có câu trả lời nào cần duyệt"
+      );
+      await fetchAnswers(currentPage);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể duyệt câu trả lời");
+    } finally {
+      setIsApprovingPending(false);
+    }
+  };
+
   const toggleCampus = (id: string) => {
     setSelectedCampusIds((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -310,6 +329,15 @@ export default function FaqAnswersPage() {
             <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline" size="sm">
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
               Làm Mới
+            </Button>
+            <Button
+              onClick={handleApproveAllPending}
+              disabled={isApprovingPending}
+              variant="outline"
+              size="sm"
+            >
+              <CheckCircle2 className={`h-4 w-4 mr-2 ${isApprovingPending ? "animate-pulse" : ""}`} />
+              {isApprovingPending ? "Đang duyệt..." : "Duyệt tất cả"}
             </Button>
             <Button size="sm" onClick={openCreate}>
               <Plus className="h-4 w-4 mr-2" />

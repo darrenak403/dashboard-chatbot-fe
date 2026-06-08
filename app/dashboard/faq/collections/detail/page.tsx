@@ -91,6 +91,7 @@ export default function FaqCollectionDetailPage() {
   const [subTopicQuestions, setSubTopicQuestions] = useState<FaqQuestion[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [addingQuestionId, setAddingQuestionId] = useState<string | null>(null);
+  const [isAddingBySubTopic, setIsAddingBySubTopic] = useState(false);
   const [removingQuestionId, setRemovingQuestionId] = useState<string | null>(null);
 
   const yearParams = useMemo(() => {
@@ -170,6 +171,31 @@ export default function FaqCollectionDetailPage() {
     setAddForm({ topic_id: "", sub_topic_id: "" });
     setSubTopicQuestions([]);
     setIsAddDialogOpen(true);
+  };
+
+  const handleAddAllBySubTopic = async () => {
+    if (!id || !addForm.sub_topic_id) {
+      toast.error("Vui lòng chọn chủ đề con");
+      return;
+    }
+    setIsAddingBySubTopic(true);
+    try {
+      const res = await faqCollectionsService.addItemsBySubTopic(id, addForm.sub_topic_id);
+      if (res.matched_count === 0) {
+        toast.warning("Chủ đề con này chưa có câu hỏi đã duyệt");
+        return;
+      }
+      if (res.inserted === 0) {
+        toast.warning("Tất cả câu hỏi đã duyệt đã có trong bộ câu hỏi");
+      } else {
+        toast.success(`Đã thêm ${res.inserted} câu hỏi vào bộ câu hỏi`);
+      }
+      await fetchDetail();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Thêm thất bại");
+    } finally {
+      setIsAddingBySubTopic(false);
+    }
   };
 
   const handleAddQuestion = async (question: FaqQuestion) => {
@@ -488,6 +514,16 @@ export default function FaqCollectionDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                disabled={!addForm.sub_topic_id || isAddingBySubTopic}
+                onClick={handleAddAllBySubTopic}
+              >
+                {isAddingBySubTopic ? "Đang thêm..." : "Thêm tất cả câu hỏi đã duyệt"}
+              </Button>
             </div>
 
             {/* Cột phải: danh sách câu hỏi */}

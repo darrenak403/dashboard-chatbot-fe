@@ -175,6 +175,8 @@ function FaqQuestionsInner() {
   const [deletingAnswer, setDeletingAnswer] = useState<FaqAnswer | null>(null);
   const [aDeleteSubmitting, setADeleteSubmitting] = useState(false);
 
+  const [approvingBulk, setApprovingBulk] = useState<"questions" | "answers" | null>(null);
+
   // Quick add
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddTopicId, setQuickAddTopicId] = useState("");
@@ -281,6 +283,42 @@ function FaqQuestionsInner() {
   const handleQuickAddSuccess = async () => {
     await fetchQuestions(questionsPage);
     if (selectedId) await fetchAnswers();
+  };
+
+  const handleApproveAllPendingQuestions = async () => {
+    setApprovingBulk("questions");
+    try {
+      const res = await faqQuestionsService.approvePending();
+      toast.success(
+        res.approved_count > 0
+          ? `Đã duyệt ${res.approved_count} câu hỏi`
+          : "Không có câu hỏi nào cần duyệt"
+      );
+      setQuestionsLoading(true);
+      await fetchQuestions(questionsPage);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể duyệt câu hỏi");
+    } finally {
+      setApprovingBulk(null);
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleApproveAllPendingAnswers = async () => {
+    setApprovingBulk("answers");
+    try {
+      const res = await faqAnswersService.approvePending();
+      toast.success(
+        res.approved_count > 0
+          ? `Đã duyệt ${res.approved_count} câu trả lời`
+          : "Không có câu trả lời nào cần duyệt"
+      );
+      if (selectedId) await fetchAnswers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể duyệt câu trả lời");
+    } finally {
+      setApprovingBulk(null);
+    }
   };
 
   const openCreateQuestion = () => {
@@ -706,7 +744,27 @@ function FaqQuestionsInner() {
                 {c.name}
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={handleApproveAllPendingQuestions}
+                disabled={approvingBulk !== null}
+              >
+                <CheckCircle2 className={`h-3.5 w-3.5 ${approvingBulk === "questions" ? "animate-pulse" : ""}`} />
+                {approvingBulk === "questions" ? "Đang duyệt..." : "Duyệt tất cả câu hỏi"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={handleApproveAllPendingAnswers}
+                disabled={approvingBulk !== null}
+              >
+                <MessagesSquare className={`h-3.5 w-3.5 ${approvingBulk === "answers" ? "animate-pulse" : ""}`} />
+                {approvingBulk === "answers" ? "Đang duyệt..." : "Duyệt tất cả câu trả lời"}
+              </Button>
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={fetchAnswers}>
                 <RefreshCw className="h-3.5 w-3.5" />Làm mới
               </Button>
@@ -899,6 +957,26 @@ function FaqQuestionsInner() {
             <Button variant="outline" size="sm" className="gap-1.5"
               onClick={() => { setQuestionsLoading(true); fetchQuestions(questionsPage).finally(() => setQuestionsLoading(false)); }}>
               <RefreshCw className="h-3.5 w-3.5" />Làm mới
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleApproveAllPendingQuestions}
+              disabled={approvingBulk !== null}
+            >
+              <CheckCircle2 className={`h-3.5 w-3.5 ${approvingBulk === "questions" ? "animate-pulse" : ""}`} />
+              {approvingBulk === "questions" ? "Đang duyệt..." : "Duyệt tất cả câu hỏi"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleApproveAllPendingAnswers}
+              disabled={approvingBulk !== null}
+            >
+              <MessagesSquare className={`h-3.5 w-3.5 ${approvingBulk === "answers" ? "animate-pulse" : ""}`} />
+              {approvingBulk === "answers" ? "Đang duyệt..." : "Duyệt tất cả câu trả lời"}
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openQuickAdd()}>
               <Zap className="h-3.5 w-3.5" />Add nhanh
