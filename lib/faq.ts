@@ -438,6 +438,72 @@ export const faqAnswersService = {
 
 // ─── Collections ──────────────────────────────────────────────────────────────
 
+const FAQ_COLLECTION_EXCEL_EXPORT_ERROR =
+  'Không thể xuất file Excel. Vui lòng thử lại.';
+
+function getDownloadFileName(response: Response): string | null {
+  const disposition = response.headers.get('Content-Disposition');
+  if (!disposition) return null;
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadFaqCollectionFile(blob: Blob, filename: string) {
+  triggerBlobDownload(blob, filename);
+}
+
+export async function downloadFaqCollectionExcel(collectionId: string): Promise<void> {
+  const token = authService.getToken();
+  const res = await fetch(
+    `${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/export.xls`,
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(FAQ_COLLECTION_EXCEL_EXPORT_ERROR);
+  }
+
+  const blob = await res.blob();
+  const filename = getDownloadFileName(res) ?? 'faq-collection.xls';
+  triggerBlobDownload(blob, filename);
+}
+
+async function fetchCollectionMdExport(
+  id: string
+): Promise<{ blob: Blob; filename: string }> {
+  const token = authService.getToken();
+  const res = await fetch(`${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/export.md`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    throw new Error('Không thể xuất file Markdown. Vui lòng thử lại.');
+  }
+  return {
+    blob: await res.blob(),
+    filename: getDownloadFileName(res) ?? `faq-collection-${id}.md`,
+  };
+}
+
 export const faqCollectionsService = {
   list(params?: { limit?: number; offset?: number; status?: string; admission_year?: number }) {
     const q = new URLSearchParams();
@@ -482,22 +548,8 @@ export const faqCollectionsService = {
       `${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/detail`
     );
   },
-  async exportCsv(id: string): Promise<Blob> {
-    const token = authService.getToken();
-    const res = await fetch(`${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/export.csv`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      const msg =
-        (typeof data?.error === 'object' && data?.error?.message) ||
-        (typeof data?.message === 'string' && data.message) ||
-        `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return res.blob();
+  async exportMd(id: string) {
+    return fetchCollectionMdExport(id);
   },
   addItems(collectionId: string, question_ids: string[]) {
     return request<{ message: string; inserted: number }>(

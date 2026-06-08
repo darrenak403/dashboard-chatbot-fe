@@ -28,6 +28,7 @@ import {
   BookOpen,
   ChevronLeft,
   Download,
+  FileText,
   RefreshCw,
   FolderOpen,
   Folder,
@@ -38,6 +39,8 @@ import {
 } from "lucide-react";
 import {
   faqCollectionsService,
+  downloadFaqCollectionExcel,
+  downloadFaqCollectionFile,
   faqTopicsService,
   faqSubTopicsService,
   faqQuestionsService,
@@ -77,7 +80,7 @@ export default function FaqCollectionDetailPage() {
   const [detail, setDetail] = useState<FaqCollectionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<'xls' | 'md' | null>(null);
   const [error, setError] = useState("");
 
   // Add question dialog
@@ -201,24 +204,38 @@ export default function FaqCollectionDetailPage() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExportExcel = async () => {
     if (!id) return;
-    setIsExporting(true);
+    setExportingFormat('xls');
     try {
-      const blob = await faqCollectionsService.exportCsv(id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `faq-collection-${id}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success("Đã xuất file CSV");
+      await downloadFaqCollectionExcel(id);
+      toast.success('Đã xuất file Excel');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Xuất file thất bại");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Không thể xuất file Excel. Vui lòng thử lại.'
+      );
     } finally {
-      setIsExporting(false);
+      setExportingFormat(null);
+    }
+  };
+
+  const handleExportMarkdown = async () => {
+    if (!id) return;
+    setExportingFormat('md');
+    try {
+      const result = await faqCollectionsService.exportMd(id);
+      downloadFaqCollectionFile(result.blob, result.filename);
+      toast.success('Đã xuất file Markdown');
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Không thể xuất file Markdown. Vui lòng thử lại.'
+      );
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -301,9 +318,23 @@ export default function FaqCollectionDetailPage() {
             <Plus className="mr-2 h-4 w-4" />
             Thêm câu hỏi
           </Button>
-          <Button size="sm" variant="outline" onClick={handleExport} disabled={isExporting}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={exportingFormat !== null}
+          >
             <Download className="mr-2 h-4 w-4" />
-            {isExporting ? "Đang xuất..." : "Xuất CSV"}
+            {exportingFormat === 'xls' ? 'Đang xuất...' : 'Xuất Excel'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportMarkdown}
+            disabled={exportingFormat !== null}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {exportingFormat === 'md' ? 'Đang xuất...' : 'Xuất Markdown'}
           </Button>
         </div>
       </div>

@@ -159,6 +159,7 @@ function FaqQuestionsInner() {
   const [aForm, setAForm] = useState({
     content: "", tags: "", keywords: "", synonyms: "",
   });
+  const [aCampusIds, setACampusIds] = useState<string[]>([]);
   const [aSubmitting, setASubmitting] = useState(false);
 
   // Campus dialog
@@ -334,6 +335,7 @@ function FaqQuestionsInner() {
   const openCreateAnswer = () => {
     setEditingAnswer(null);
     setAForm({ content: "", tags: "", keywords: "", synonyms: "" });
+    setACampusIds([]);
     setIsADialogOpen(true);
   };
 
@@ -346,8 +348,18 @@ function FaqQuestionsInner() {
       keywords: (a.keywords || []).join(", "),
       synonyms: (a.synonyms || []).join(", "),
     });
+    setACampusIds(
+      a.applies_to_all_campuses || !(a.campus_ids?.length)
+        ? []
+        : [...a.campus_ids]
+    );
     setIsADialogOpen(true);
   };
+
+  const toggleACampus = (campusId: string) =>
+    setACampusIds((prev) =>
+      prev.includes(campusId) ? prev.filter((id) => id !== campusId) : [...prev, campusId]
+    );
 
   const splitTags = (s: string) => s.split(",").map((t) => t.trim()).filter(Boolean);
 
@@ -365,9 +377,11 @@ function FaqQuestionsInner() {
       };
       if (editingAnswer) {
         await faqAnswersService.update(editingAnswer.id, payload);
+        await faqAnswersService.setCampuses(editingAnswer.id, aCampusIds);
         toast.success("Cập nhật câu trả lời thành công");
       } else {
-        await faqAnswersService.create(payload);
+        const res = await faqAnswersService.create(payload);
+        await faqAnswersService.setCampuses(res.data.id, aCampusIds);
         toast.success("Tạo câu trả lời thành công");
       }
       setIsADialogOpen(false);
@@ -513,6 +527,37 @@ function FaqQuestionsInner() {
                 <Textarea id="a_content" value={aForm.content}
                   onChange={(e) => setAForm({ ...aForm, content: e.target.value })}
                   placeholder="Nhập nội dung câu trả lời..." rows={5} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Phạm Vi Cơ Sở</Label>
+                <p className="text-xs text-gray-400">Không chọn cơ sở cụ thể = áp dụng cho tất cả cơ sở.</p>
+                <div className="rounded-md border p-2 space-y-1">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={aCampusIds.length === 0}
+                      onChange={() => setACampusIds([])}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-blue-700">Tất cả cơ sở</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">All</Badge>
+                  </label>
+                  <div className="border-t my-1" />
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {campuses.map((c) => (
+                      <label key={c.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={aCampusIds.includes(c.id)}
+                          onChange={() => toggleACampus(c.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium flex-1">{c.name}</span>
+                        <Badge variant="outline" className="text-xs">{c.code}</Badge>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {(["tags", "keywords", "synonyms"] as const).map((field, i) => (
