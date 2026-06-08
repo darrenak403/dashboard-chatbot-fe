@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TuitionFee, Program, Campus } from "@/lib/auth";
+import { useYear } from "@/contexts/year-context";
 
 interface TuitionDialogProps {
   open: boolean;
@@ -49,10 +50,13 @@ const TuitionDialog = React.memo(function TuitionDialog({
   submitText,
   initialData,
 }: TuitionDialogProps) {
+  const { selectedYear } = useYear();
+  const defaultYear = selectedYear ?? new Date().getFullYear();
+
   const [formData, setFormData] = useState({
     program_id: "",
     campus_id: "",
-    year: new Date().getFullYear(),
+    year: defaultYear,
     semester_group_1_3_fee: 0,
     semester_group_4_6_fee: 0,
     semester_group_7_9_fee: 0,
@@ -75,17 +79,20 @@ const TuitionDialog = React.memo(function TuitionDialog({
       setFormData({
         program_id: "",
         campus_id: "",
-        year: new Date().getFullYear(),
+        year: defaultYear,
         semester_group_1_3_fee: 0,
         semester_group_4_6_fee: 0,
         semester_group_7_9_fee: 0,
       });
     }
-  }, [initialData, open, campuses, programs]);
+  }, [initialData, open, campuses, programs, defaultYear]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      year: selectedYear ?? formData.year,
+    });
   };
 
   return (
@@ -138,17 +145,21 @@ const TuitionDialog = React.memo(function TuitionDialog({
           </div>
 
           <div>
-            <Label htmlFor="year">Năm</Label>
-            <Input
-              id="year"
-              type="number"
-              min={2020}
-              max={2030}
-              value={formData.year}
-              onChange={(e) =>
-                setFormData({ ...formData, year: parseInt(e.target.value) })
-              }
-            />
+            <Label htmlFor="year">Năm tuyển sinh</Label>
+            {selectedYear != null ? (
+              <Input id="year" value={selectedYear} readOnly disabled className="bg-gray-50" />
+            ) : (
+              <Input
+                id="year"
+                type="number"
+                min={2020}
+                max={2030}
+                value={formData.year}
+                onChange={(e) =>
+                  setFormData({ ...formData, year: parseInt(e.target.value) })
+                }
+              />
+            )}
           </div>
 
           <div>

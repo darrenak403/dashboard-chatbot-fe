@@ -69,9 +69,11 @@ import {
 } from "lucide-react";
 import {
   faqQuestionsService,
+  faqTopicsService,
   faqSubTopicsService,
   faqAnswersService,
   FaqQuestion,
+  FaqTopic,
   FaqSubTopic,
   FaqAnswer,
   QuestionStatus,
@@ -83,6 +85,7 @@ import {
 } from "@/lib/faq";
 import { authService, Campus } from "@/lib/auth";
 import { API_ENDPOINTS } from "@/lib/constants";
+import { useYear } from "@/contexts/year-context";
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
   approved: CheckCircle2,
@@ -114,8 +117,11 @@ function FaqQuestionsInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("id");
+  const { selectedYear } = useYear();
+  const yearParams = selectedYear != null ? { admission_year: selectedYear } : {};
 
   // Shared
+  const [topics, setTopics] = useState<FaqTopic[]>([]);
   const [subTopics, setSubTopics] = useState<FaqSubTopic[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
@@ -135,7 +141,7 @@ function FaqQuestionsInner() {
   // Question form
   const [isQDialogOpen, setIsQDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<FaqQuestion | null>(null);
-  const [qForm, setQForm] = useState({ sub_topic_id: "", content: "" });
+  const [qForm, setQForm] = useState({ topic_id: "", sub_topic_id: "", content: "" });
   const [qSubmitting, setQSubmitting] = useState(false);
   const [isQDeleteOpen, setIsQDeleteOpen] = useState(false);
   const [deletingQuestion, setDeletingQuestion] = useState<FaqQuestion | null>(null);
@@ -168,16 +174,17 @@ function FaqQuestionsInner() {
 
   // ── Init ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    faqSubTopicsService.list({ limit: 100 }).then((r) => setSubTopics(r.data)).catch(() => {});
+    faqTopicsService.list({ limit: 100, ...yearParams }).then((r) => setTopics(r.data)).catch(() => {});
+    faqSubTopicsService.list({ limit: 100, ...yearParams }).then((r) => setSubTopics(r.data)).catch(() => {});
     fetchAllCampuses(authService.getToken()).then(setCampuses);
-  }, []);
+  }, [selectedYear]);
 
   // ── Fetch questions ──────────────────────────────────────────────────────────
   const fetchQuestions = useCallback(async (page = 1) => {
     try {
       setQuestionsError("");
       const params: Parameters<typeof faqQuestionsService.list>[0] = {
-        limit: LIMIT, offset: (page - 1) * LIMIT,
+        limit: LIMIT, offset: (page - 1) * LIMIT, ...yearParams,
       };
       if (filterSubTopicId !== "all") params.sub_topic_id = filterSubTopicId;
       if (filterStatus !== "all") params.status = filterStatus;
@@ -190,7 +197,7 @@ function FaqQuestionsInner() {
       setQuestionsError(msg);
       if (msg.includes("401")) { authService.logout(); router.push("/login"); }
     }
-  }, [filterSubTopicId, filterStatus, router]);
+  }, [filterSubTopicId, filterStatus, router, selectedYear]);
 
   useEffect(() => {
     setQuestionsLoading(true);
@@ -232,14 +239,14 @@ function FaqQuestionsInner() {
     setAnswersLoading(true);
     try {
       const params: Parameters<typeof faqAnswersService.list>[0] = {
-        limit: 100, offset: 0, question_id: selectedId,
+        limit: 100, offset: 0, question_id: selectedId, ...yearParams,
       };
       if (filterCampusId !== "all") params.campus_id = filterCampusId;
       const res = await faqAnswersService.list(params);
       setAnswers(res.data);
     } catch { setAnswers([]); }
     finally { setAnswersLoading(false); }
-  }, [selectedId, filterCampusId]);
+  }, [selectedId, filterCampusId, selectedYear]);
 
   useEffect(() => { fetchAnswers(); }, [fetchAnswers]);
 
@@ -247,31 +254,47 @@ function FaqQuestionsInner() {
   const goToList = () => router.push("/dashboard/faq/questions");
 
   // ── Question handlers ────────────────────────────────────────────────────────
+  const resolveTopicIdForSubTopic = (subTopicId: string) => {
+    const st = subTopics.find((s) => s.id === subTopicId);
+    return st?.topic_id || st?.topic?.id || "";
+  };
+
   const openCreateQuestion = () => {
     setEditingQuestion(null);
-    setQForm({ sub_topic_id: filterSubTopicId !== "all" ? filterSubTopicId : "", content: "" });
+    const subTopicId = filterSubTopicId !== "all" ? filterSubTopicId : "";
+    setQForm({
+      topic_id: subTopicId ? resolveTopicIdForSubTopic(subTopicId) : "",
+      sub_topic_id: subTopicId,
+      content: "",
+    });
     setIsQDialogOpen(true);
   };
 
   const openEditQuestion = (q: FaqQuestion, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingQuestion(q);
-    setQForm({ sub_topic_id: q.sub_topic_id, content: q.content });
+    setQForm({
+      topic_id: q.sub_topic?.topic?.id || resolveTopicIdForSubTopic(q.sub_topic_id),
+      sub_topic_id: q.sub_topic_id,
+      content: q.content,
+    });
     setIsQDialogOpen(true);
   };
 
   const handleQSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!qForm.topic_id) { toast.error("Vui lòng chọn chủ đề chính"); return; }
     if (!qForm.sub_topic_id) { toast.error("Vui lòng chọn chủ đề con"); return; }
     setQSubmitting(true);
+    const payload = { sub_topic_id: qForm.sub_topic_id, content: qForm.content };
     try {
       if (editingQuestion) {
-        await faqQuestionsService.update(editingQuestion.id, qForm);
+        await faqQuestionsService.update(editingQuestion.id, payload);
         toast.success("Cập nhật câu hỏi thành công");
         if (selectedQuestion?.id === editingQuestion.id)
-          setSelectedQuestion({ ...selectedQuestion, ...qForm });
+          setSelectedQuestion({ ...selectedQuestion, ...payload });
       } else {
-        await faqQuestionsService.create(qForm);
+        await faqQuestionsService.create(payload);
         toast.success("Tạo câu hỏi thành công");
       }
       setIsQDialogOpen(false);
@@ -403,6 +426,9 @@ function FaqQuestionsInner() {
   };
 
   const questionsTotalPages = Math.max(1, Math.ceil(questionsMeta.total / LIMIT));
+  const dialogSubTopics = qForm.topic_id
+    ? subTopics.filter((st) => st.topic_id === qForm.topic_id)
+    : [];
 
   // Shared dialogs (dùng cho cả 2 view)
   const sharedDialogs = (
@@ -417,11 +443,29 @@ function FaqQuestionsInner() {
           <form onSubmit={handleQSubmit}>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>Chủ Đề Con *</Label>
-                <Select value={qForm.sub_topic_id || undefined} onValueChange={(v) => setQForm({ ...qForm, sub_topic_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Chọn chủ đề con" /></SelectTrigger>
+                <Label>Chủ Đề Chính *</Label>
+                <Select
+                  value={qForm.topic_id || undefined}
+                  onValueChange={(v) => setQForm({ ...qForm, topic_id: v, sub_topic_id: "" })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Chọn chủ đề chính" /></SelectTrigger>
                   <SelectContent>
-                    {subTopics.map((st) => <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>)}
+                    {topics.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Chủ Đề Con *</Label>
+                <Select
+                  value={qForm.sub_topic_id || undefined}
+                  onValueChange={(v) => setQForm({ ...qForm, sub_topic_id: v })}
+                  disabled={!qForm.topic_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={qForm.topic_id ? "Chọn chủ đề con" : "Chọn chủ đề chính trước"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dialogSubTopics.map((st) => <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

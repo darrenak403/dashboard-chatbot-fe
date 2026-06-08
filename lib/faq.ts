@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from './constants';
+import { API_ENDPOINTS, MAX_PAGE_LIMIT } from './constants';
 import { authService } from './auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,6 +86,86 @@ export interface FaqCollection {
   updated_at: string;
 }
 
+export interface FaqCollectionDetailAnswer {
+  id: string;
+  content: string;
+  status: AnswerStatus;
+  applies_to_all_campuses: boolean;
+  campus_ids: string[];
+  campus_codes: string[];
+  campus_names: string[];
+  tags: string[];
+  keywords: string[];
+  synonyms: string[];
+  version: number;
+}
+
+export interface FaqCollectionDetailQuestion {
+  id: string;
+  code: string;
+  content: string;
+  status: QuestionStatus;
+  sort_order: number;
+  answers: FaqCollectionDetailAnswer[];
+}
+
+export interface FaqCollectionDetailSubTopic {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number;
+  questions: FaqCollectionDetailQuestion[];
+}
+
+export interface FaqCollectionDetailTopic {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number;
+  sub_topics: FaqCollectionDetailSubTopic[];
+}
+
+export interface FaqCollectionDetail {
+  id: string;
+  name: string;
+  description: string;
+  admission_year: number;
+  status: CollectionStatus;
+  topics: FaqCollectionDetailTopic[];
+}
+
+export function extractCollectionItemsFromDetail(detail: FaqCollectionDetail): FaqCollectionItem[] {
+  const items: FaqCollectionItem[] = [];
+  let order = 0;
+  for (const topic of detail.topics) {
+    for (const st of topic.sub_topics) {
+      for (const q of st.questions) {
+        items.push({
+          id: q.id,
+          collection_id: detail.id,
+          question_id: q.id,
+          order_index: q.sort_order ?? order++,
+          question: {
+            id: q.id,
+            code: q.code,
+            sub_topic_id: st.id,
+            content: q.content,
+            status: q.status,
+            sub_topic: {
+              id: st.id,
+              name: st.name,
+              topic: { id: topic.id, name: topic.name },
+            },
+            created_at: '',
+            updated_at: '',
+          },
+        });
+      }
+    }
+  }
+  return items;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   meta: {
@@ -141,6 +221,11 @@ export const STATUS_BADGE_CLASS: Record<string, string> = {
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
+function capLimit(limit?: number) {
+  if (limit == null) return undefined;
+  return Math.min(limit, MAX_PAGE_LIMIT);
+}
+
 function getAuthHeaders() {
   const token = authService.getToken();
   return {
@@ -156,7 +241,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   });
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error?.message || data?.message || `HTTP ${res.status}`);
+    const msg =
+      (typeof data?.error === 'object' && data?.error?.message) ||
+      (typeof data?.message === 'string' && data.message) ||
+      `HTTP ${res.status}`;
+    throw new Error(msg);
   }
   return data;
 }
@@ -164,12 +253,14 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 // ─── Topics ───────────────────────────────────────────────────────────────────
 
 export const faqTopicsService = {
-  list(params?: { limit?: number; offset?: number; search?: string; is_active?: boolean }) {
+  list(params?: { limit?: number; offset?: number; search?: string; is_active?: boolean; admission_year?: number }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
     if (params?.search) q.set('search', params.search);
     if (params?.is_active != null) q.set('is_active', String(params.is_active));
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqTopic>>(`${API_ENDPOINTS.FAQ_TOPICS}?${q}`);
   },
   create(data: { code: string; name: string; description?: string; sort_order?: number }) {
@@ -192,28 +283,32 @@ export const faqTopicsService = {
 // ─── Sub-Topics ───────────────────────────────────────────────────────────────
 
 export const faqSubTopicsService = {
-  list(params?: { limit?: number; offset?: number; topic_id?: string }) {
+  list(params?: { limit?: number; offset?: number; topic_id?: string; admission_year?: number }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
     if (params?.topic_id) q.set('topic_id', params.topic_id);
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqSubTopic>>(`${API_ENDPOINTS.FAQ_SUB_TOPICS}?${q}`);
   },
-  listByTopic(topicId: string, params?: { limit?: number; offset?: number }) {
+  listByTopic(topicId: string, params?: { limit?: number; offset?: number; admission_year?: number }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqSubTopic>>(
       `${API_ENDPOINTS.FAQ_TOPICS}/${topicId}/sub-topics?${q}`
     );
   },
-  create(data: { topic_id: string; name: string; description?: string; is_active?: boolean }) {
+  create(data: { topic_id: string; code: string; name: string; description?: string; is_active?: boolean; sort_order?: number }) {
     return request<{ data: FaqSubTopic }>(API_ENDPOINTS.FAQ_SUB_TOPICS, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
-  update(id: string, data: { topic_id?: string; name?: string; description?: string; is_active?: boolean }) {
+  update(id: string, data: { topic_id?: string; code?: string; name?: string; description?: string; is_active?: boolean; sort_order?: number }) {
     return request<{ data: FaqSubTopic }>(`${API_ENDPOINTS.FAQ_SUB_TOPICS}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -227,19 +322,31 @@ export const faqSubTopicsService = {
 // ─── Questions ────────────────────────────────────────────────────────────────
 
 export const faqQuestionsService = {
-  list(params?: { limit?: number; offset?: number; sub_topic_id?: string; topic_id?: string; status?: string; content?: string; code?: string }) {
+  list(params?: { limit?: number; offset?: number; sub_topic_id?: string; topic_id?: string; status?: string; content?: string; code?: string; admission_year?: number }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
     if (params?.sub_topic_id) q.set('sub_topic_id', params.sub_topic_id);
     if (params?.topic_id) q.set('topic_id', params.topic_id);
     if (params?.status) q.set('status', params.status);
     if (params?.content) q.set('content', params.content);
     if (params?.code) q.set('code', params.code);
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqQuestion>>(`${API_ENDPOINTS.FAQ_QUESTIONS}?${q}`);
   },
   get(id: string) {
     return request<{ data: FaqQuestion }>(`${API_ENDPOINTS.FAQ_QUESTIONS}/${id}`);
+  },
+  listAnswers(questionId: string, params?: { limit?: number; offset?: number }) {
+    const q = new URLSearchParams();
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
+    if (params?.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return request<PaginatedResponse<FaqAnswer>>(
+      `${API_ENDPOINTS.FAQ_QUESTIONS}/${questionId}/answers${qs ? `?${qs}` : ''}`
+    );
   },
   create(data: { sub_topic_id: string; content: string }) {
     return request<{ data: FaqQuestion }>(API_ENDPOINTS.FAQ_QUESTIONS, {
@@ -273,13 +380,16 @@ export const faqAnswersService = {
     status?: string;
     campus_id?: string;
     question_id?: string;
+    admission_year?: number;
   }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
     if (params?.status) q.set('status', params.status);
     if (params?.campus_id) q.set('campus_id', params.campus_id);
     if (params?.question_id) q.set('question_id', params.question_id);
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqAnswer>>(`${API_ENDPOINTS.FAQ_ANSWERS}?${q}`);
   },
   create(data: {
@@ -331,10 +441,11 @@ export const faqAnswersService = {
 export const faqCollectionsService = {
   list(params?: { limit?: number; offset?: number; status?: string; admission_year?: number }) {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set('limit', String(params.limit));
+    const limit = capLimit(params?.limit);
+    if (limit != null) q.set('limit', String(limit));
     if (params?.offset != null) q.set('offset', String(params.offset));
     if (params?.status) q.set('status', params.status);
-    if (params?.admission_year) q.set('admission_year', String(params.admission_year));
+    if (params?.admission_year != null) q.set('admission_year', String(params.admission_year));
     return request<PaginatedResponse<FaqCollection>>(`${API_ENDPOINTS.FAQ_COLLECTIONS}?${q}`);
   },
   get(id: string) {
@@ -365,6 +476,34 @@ export const faqCollectionsService = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
+  },
+  getDetail(id: string) {
+    return request<{ data: FaqCollectionDetail }>(
+      `${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/detail`
+    );
+  },
+  async exportCsv(id: string): Promise<Blob> {
+    const token = authService.getToken();
+    const res = await fetch(`${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/export.csv`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const msg =
+        (typeof data?.error === 'object' && data?.error?.message) ||
+        (typeof data?.message === 'string' && data.message) ||
+        `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
+  addItems(collectionId: string, question_ids: string[]) {
+    return request<{ message: string; inserted: number }>(
+      `${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/items`,
+      { method: 'POST', body: JSON.stringify({ question_ids }) }
+    );
   },
   addItem(collectionId: string, question_id: string) {
     return request<{ message: string; inserted: number }>(

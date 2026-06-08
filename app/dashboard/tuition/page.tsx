@@ -22,8 +22,10 @@ import {
   Campus,
 } from "@/lib/auth";
 import { API_ENDPOINTS } from "@/lib/constants";
+import { useYear } from "@/contexts/year-context";
 
 export default function TuitionPage() {
+  const { selectedYear } = useYear();
   // Main data states
   const [tuitionFees, setTuitionFees] = useState<TuitionFee[]>([]);
   const [tuitionMeta, setTuitionMeta] = useState<
@@ -39,8 +41,6 @@ export default function TuitionPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProgramCode, setSelectedProgramCode] = useState("all");
   const [selectedCampusCode, setSelectedCampusCode] = useState("all");
-  const [selectedYear, setSelectedYear] = useState(2025);
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -72,7 +72,7 @@ export default function TuitionPage() {
       const response = await authService.getTuitionFees({
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
-        year: selectedYear,
+        ...(selectedYear != null && { admission_year: selectedYear }),
         program_code:
           selectedProgramCode !== "all" ? selectedProgramCode : undefined,
         campus_code:
@@ -101,9 +101,9 @@ export default function TuitionPage() {
       console.log("Fetching dropdown data from new APIs...");
 
       const [programsResponse, campusesResponse] = await Promise.all([
-        fetch(`${API_ENDPOINTS.PROGRAMS}?limit=100&offset=0`),
+        fetch(`${API_ENDPOINTS.PROGRAMS}?limit=100&offset=0${selectedYear != null ? `&admission_year=${selectedYear}` : ""}`),
         fetch(
-          `${API_ENDPOINTS.CAMPUSES}?limit=100&offset=0&year=${selectedYear}`
+          `${API_ENDPOINTS.CAMPUSES}?limit=100&offset=0${selectedYear != null ? `&admission_year=${selectedYear}` : ""}`
         ),
       ]);
 
@@ -267,7 +267,7 @@ export default function TuitionPage() {
     try {
       const response = await authService.getTuitionComparison({
         program_code: selectedProgramCode,
-        year: selectedYear,
+        ...(selectedYear != null && { admission_year: selectedYear }),
       });
       setComparisons(response.data);
     } catch (error) {
@@ -514,7 +514,6 @@ export default function TuitionPage() {
             selectedCampusCode={selectedCampusCode}
             setSelectedCampusCode={setSelectedCampusCode}
             selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             pageSize={pageSize}
@@ -535,7 +534,6 @@ export default function TuitionPage() {
             selectedProgramCode={selectedProgramCode}
             setSelectedProgramCode={setSelectedProgramCode}
             selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
             formatCurrency={formatCurrency}
           />
         </TabsContent>

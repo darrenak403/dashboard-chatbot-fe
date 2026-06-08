@@ -49,12 +49,15 @@ import {
 } from "lucide-react";
 import { faqTopicsService, faqSubTopicsService, FaqTopic, FaqSubTopic } from "@/lib/faq";
 import { authService } from "@/lib/auth";
+import { useYear } from "@/contexts/year-context";
 
 const LIMIT = 10;
 const SUBLIMIT = 20;
 
 export default function FaqTopicsPage() {
   const router = useRouter();
+  const { selectedYear } = useYear();
+  const yearParams = selectedYear != null ? { admission_year: selectedYear } : {};
 
   // ── Topics ──────────────────────────────────────────────────────────────────
   const [topics, setTopics] = useState<FaqTopic[]>([]);
@@ -87,14 +90,14 @@ export default function FaqTopicsPage() {
   const [isSubTopicDeleteOpen, setIsSubTopicDeleteOpen] = useState(false);
   const [editingSubTopic, setEditingSubTopic] = useState<FaqSubTopic | null>(null);
   const [deletingSubTopic, setDeletingSubTopic] = useState<FaqSubTopic | null>(null);
-  const [subTopicForm, setSubTopicForm] = useState({ name: "", description: "", is_active: true });
+  const [subTopicForm, setSubTopicForm] = useState({ code: "", name: "", description: "", is_active: true });
   const [subTopicSubmitting, setSubTopicSubmitting] = useState(false);
 
   // ── Fetch topics ────────────────────────────────────────────────────────────
   const fetchTopics = useCallback(async (page = 1) => {
     try {
       setTopicsError("");
-      const params: Record<string, unknown> = { limit: LIMIT, offset: (page - 1) * LIMIT };
+      const params: Record<string, unknown> = { limit: LIMIT, offset: (page - 1) * LIMIT, ...yearParams };
       if (searchTerm) params.search = searchTerm;
       if (filterActive !== "all") params.is_active = filterActive === "true";
       const res = await faqTopicsService.list(params as Parameters<typeof faqTopicsService.list>[0]);
@@ -106,7 +109,7 @@ export default function FaqTopicsPage() {
       setTopicsError(msg);
       if (msg.includes("401")) { authService.logout(); router.push("/login"); }
     }
-  }, [searchTerm, filterActive, router]);
+  }, [searchTerm, filterActive, router, selectedYear]);
 
   useEffect(() => {
     setTopicsLoading(true);
@@ -118,10 +121,10 @@ export default function FaqTopicsPage() {
     if (!selectedTopic) { setSubTopics([]); setSubTopicsMeta({ total: 0, limit: SUBLIMIT, offset: 0, has_next: false, has_prev: false }); return; }
     setSubTopicsLoading(true);
     try {
-      const res = await faqSubTopicsService.list({
+      const res = await faqSubTopicsService.listByTopic(selectedTopic.id, {
         limit: SUBLIMIT,
         offset: (page - 1) * SUBLIMIT,
-        topic_id: selectedTopic.id,
+        ...yearParams,
       });
       setSubTopics(res.data);
       setSubTopicsMeta(res.meta);
@@ -131,7 +134,7 @@ export default function FaqTopicsPage() {
     } finally {
       setSubTopicsLoading(false);
     }
-  }, [selectedTopic]);
+  }, [selectedTopic, selectedYear]);
 
   useEffect(() => {
     fetchSubTopics(1);
@@ -193,13 +196,13 @@ export default function FaqTopicsPage() {
   const openCreateSubTopic = () => {
     if (!selectedTopic) return;
     setEditingSubTopic(null);
-    setSubTopicForm({ name: "", description: "", is_active: true });
+    setSubTopicForm({ code: "", name: "", description: "", is_active: true });
     setIsSubTopicDialogOpen(true);
   };
 
   const openEditSubTopic = (st: FaqSubTopic) => {
     setEditingSubTopic(st);
-    setSubTopicForm({ name: st.name, description: st.description, is_active: st.is_active });
+    setSubTopicForm({ code: st.code, name: st.name, description: st.description, is_active: st.is_active });
     setIsSubTopicDialogOpen(true);
   };
 
@@ -456,7 +459,10 @@ export default function FaqTopicsPage() {
                   {subTopics.map((st) => (
                     <div key={st.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{st.name}</p>
+                        <p className="font-medium text-sm truncate">
+                          {st.code && <span className="text-gray-400 font-mono text-xs mr-2">{st.code}</span>}
+                          {st.name}
+                        </p>
                         {st.description && (
                           <p className="text-xs text-gray-400 truncate mt-0.5">{st.description}</p>
                         )}
@@ -619,6 +625,16 @@ export default function FaqTopicsPage() {
             </DialogHeader>
             <form onSubmit={handleSubTopicSubmit}>
               <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label>Mã Chủ Đề Con *</Label>
+                  <Input
+                    value={subTopicForm.code}
+                    onChange={(e) => setSubTopicForm({ ...subTopicForm, code: e.target.value.toUpperCase() })}
+                    placeholder="VD: PHUONG_THUC_XET_TUYEN"
+                    maxLength={50}
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Tên Chủ Đề Con *</Label>
                   <Input

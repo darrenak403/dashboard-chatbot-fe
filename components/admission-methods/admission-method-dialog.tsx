@@ -23,6 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Loader2, AlertCircle } from "lucide-react";
 import { AdmissionMethod } from "@/lib/auth";
+import { useYear } from "@/contexts/year-context";
 
 interface AdmissionMethodDialogProps {
   open: boolean;
@@ -48,12 +49,15 @@ export default function AdmissionMethodDialog({
   onSave,
   isLoading = false,
 }: AdmissionMethodDialogProps) {
+  const { selectedYear } = useYear();
+  const defaultYear = selectedYear ?? new Date().getFullYear();
+
   const [formData, setFormData] = useState<AdmissionMethodFormData>({
     method_code: "",
     name: "",
     requirements: "",
     notes: "",
-    year: new Date().getFullYear(),
+    year: defaultYear,
     is_active: true,
   });
 
@@ -81,13 +85,13 @@ export default function AdmissionMethodDialog({
           name: "",
           requirements: "",
           notes: "",
-          year: new Date().getFullYear(),
+          year: defaultYear,
           is_active: true,
         });
       }
       setErrors({});
     }
-  }, [open, admissionMethod]);
+  }, [open, admissionMethod, defaultYear]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AdmissionMethodFormData, string>> =
@@ -121,7 +125,10 @@ export default function AdmissionMethodDialog({
     }
 
     try {
-      await onSave(formData);
+      await onSave({
+        ...formData,
+        year: selectedYear ?? formData.year,
+      });
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving admission method:", error);
@@ -183,27 +190,31 @@ export default function AdmissionMethodDialog({
             {/* Year */}
             <div className="space-y-2">
               <Label htmlFor="year">
-                Năm <span className="text-red-500">*</span>
+                Năm tuyển sinh <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={formData.year.toString()}
-                onValueChange={(value) =>
-                  handleInputChange("year", parseInt(value))
-                }
-              >
-                <SelectTrigger className={errors.year ? "border-red-500" : ""}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 11 }, (_, i) => 2020 + i).map(
-                    (year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
+              {selectedYear != null ? (
+                <Input id="year" value={selectedYear} readOnly disabled className="bg-gray-50" />
+              ) : (
+                <Select
+                  value={formData.year.toString()}
+                  onValueChange={(value) =>
+                    handleInputChange("year", parseInt(value))
+                  }
+                >
+                  <SelectTrigger className={errors.year ? "border-red-500" : ""}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 11 }, (_, i) => 2020 + i).map(
+                      (year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
               {errors.year && (
                 <div className="flex items-center space-x-1 text-red-500 text-sm">
                   <AlertCircle className="h-4 w-4" />

@@ -68,8 +68,10 @@ import {
   CreateProgramRequest,
   UpdateProgramRequest,
 } from "@/lib/auth";
+import { useYear } from "@/contexts/year-context";
 
 export default function ProgramsPage() {
+  const { selectedYear } = useYear();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,11 +113,12 @@ export default function ProgramsPage() {
     try {
       setError("");
       const offset = (page - 1) * limit;
-      const response = await authService.getPrograms(
+      const response = await authService.getPrograms({
         limit,
         offset,
-        departmentCode
-      );
+        ...(departmentCode && { department_code: departmentCode }),
+        ...(selectedYear != null && { admission_year: selectedYear }),
+      });
 
       setPrograms(response.data);
       setMeta(response.meta);
@@ -136,7 +139,11 @@ export default function ProgramsPage() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await authService.getDepartments(100, 0);
+      const response = await authService.getDepartments({
+        limit: 100,
+        offset: 0,
+        ...(selectedYear != null && { admission_year: selectedYear }),
+      });
       setDepartments(response.data);
     } catch (error) {
       console.error("Không thể tải danh sách khoa:", error);
@@ -151,7 +158,7 @@ export default function ProgramsPage() {
     };
 
     loadData();
-  }, []);
+  }, [selectedYear]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -221,7 +228,10 @@ export default function ProgramsPage() {
         await authService.updateProgram(editingProgram.id, formData);
       } else {
         // Create new program
-        await authService.createProgram(formData);
+        await authService.createProgram({
+          ...formData,
+          ...(selectedYear != null && { admission_year: selectedYear }),
+        });
       }
 
       setIsDialogOpen(false);
@@ -279,9 +289,12 @@ export default function ProgramsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <GraduationCap className="h-8 w-8 mr-3 text-green-600" />
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <GraduationCap className="h-8 w-8 text-green-600" />
               Chương Trình
+              {selectedYear != null && (
+                <Badge variant="outline" className="text-sm font-medium">Năm {selectedYear}</Badge>
+              )}
             </h1>
             <p className="text-gray-600 mt-1">
               Quản lý các chương trình học thuật

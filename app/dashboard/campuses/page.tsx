@@ -60,7 +60,6 @@ import {
   CreateCampusRequest,
   UpdateCampusRequest,
 } from "@/lib/auth";
-
 export default function CampusesPage() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,7 +98,7 @@ export default function CampusesPage() {
     try {
       setError("");
       const offset = (page - 1) * limit;
-      const response = await authService.getCampuses(limit, offset);
+      const response = await authService.getCampuses({ limit, offset });
 
       setCampuses(response.data);
       setMeta(response.meta);

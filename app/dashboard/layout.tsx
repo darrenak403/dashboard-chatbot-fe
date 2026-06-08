@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
+import { YearProvider } from "@/contexts/year-context";
 import { authService } from "@/lib/auth";
 
 export default function DashboardLayout({
@@ -48,19 +49,21 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="relative min-h-0 flex-1 overflow-y-auto p-6">
-          {/* Background decoration */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 blur-3xl"></div>
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-20 blur-3xl"></div>
-          </div>
-          <div className="relative z-10">{children}</div>
-        </main>
+    <YearProvider>
+      <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <Header />
+          <main className="relative min-h-0 flex-1 overflow-y-auto p-6">
+            {/* Background decoration */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 blur-3xl"></div>
+              <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-20 blur-3xl"></div>
+            </div>
+            <div className="relative z-10">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </YearProvider>
   );
 }

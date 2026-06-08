@@ -24,8 +24,7 @@ interface TuitionComparisonTabProps {
   programs: Program[];
   selectedProgramCode: string;
   setSelectedProgramCode: (code: string) => void;
-  selectedYear: number;
-  setSelectedYear: (year: number) => void;
+  selectedYear: number | null;
   formatCurrency: (amount: number) => string;
 }
 
@@ -35,11 +34,8 @@ const TuitionComparisonTab = React.memo(function TuitionComparisonTab({
   selectedProgramCode,
   setSelectedProgramCode,
   selectedYear,
-  setSelectedYear,
   formatCurrency,
 }: TuitionComparisonTabProps) {
-  const availableYears = [2024, 2025, 2026];
-
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -71,23 +67,10 @@ const TuitionComparisonTab = React.memo(function TuitionComparisonTab({
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="year">Năm học</Label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-end">
+              <p className="text-sm text-gray-600">
+                Năm tuyển sinh: <span className="font-semibold text-gray-900">{selectedYear ?? "—"}</span>
+              </p>
             </div>
           </div>
         </CardContent>

@@ -35,6 +35,7 @@ export interface Department {
   name: string;
   name_en: string;
   description: string;
+  admission_year?: number;
 }
 
 export interface DepartmentsResponse {
@@ -53,6 +54,7 @@ export interface CreateDepartmentRequest {
   name: string;
   name_en?: string;
   description?: string;
+  admission_year?: number;
 }
 
 export interface UpdateDepartmentRequest {
@@ -61,6 +63,7 @@ export interface UpdateDepartmentRequest {
   name_en?: string;
   description?: string;
   is_active?: boolean;
+  admission_year?: number;
 }
 
 export interface DepartmentResponse {
@@ -78,6 +81,7 @@ export interface Program {
   name_en: string;
   department_id: string;
   duration_years: number;
+  admission_year?: number;
   department: {
     id: string;
     code: string;
@@ -103,6 +107,7 @@ export interface CreateProgramRequest {
   name_en?: string;
   department_id: string;
   duration_years: number;
+  admission_year?: number;
 }
 
 export interface UpdateProgramRequest {
@@ -112,6 +117,7 @@ export interface UpdateProgramRequest {
   department_id?: string;
   duration_years?: number;
   is_active?: boolean;
+  admission_year?: number;
 }
 
 export interface ProgramResponse {
@@ -249,13 +255,20 @@ class AuthService {
     });
   }
 
-  async getDepartments(limit: number = 100, offset: number = 0): Promise<DepartmentsResponse> {
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
+  async getDepartments(params?: {
+    limit?: number;
+    offset?: number;
+    admission_year?: number;
+  }): Promise<DepartmentsResponse> {
+    const searchParams = new URLSearchParams({
+      limit: String(params?.limit ?? 100),
+      offset: String(params?.offset ?? 0),
     });
+    if (params?.admission_year != null) {
+      searchParams.set('admission_year', String(params.admission_year));
+    }
 
-    return this.makeRequest<DepartmentsResponse>(`/departments?${params}`, {
+    return this.makeRequest<DepartmentsResponse>(`/departments?${searchParams}`, {
       method: 'GET',
     });
   }
@@ -280,21 +293,20 @@ class AuthService {
     });
   }
 
-  async getPrograms(
-    limit: number = 100,
-    offset: number = 0,
-    departmentCode?: string
-  ): Promise<ProgramsResponse> {
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
+  async getPrograms(params?: {
+    limit?: number;
+    offset?: number;
+    department_code?: string;
+    admission_year?: number;
+  }): Promise<ProgramsResponse> {
+    const searchParams = new URLSearchParams({
+      limit: String(params?.limit ?? 100),
+      offset: String(params?.offset ?? 0),
     });
+    if (params?.department_code) searchParams.set('department_code', params.department_code);
+    if (params?.admission_year != null) searchParams.set('admission_year', String(params.admission_year));
 
-    if (departmentCode) {
-      params.append('department_code', departmentCode);
-    }
-
-    return this.makeRequest<ProgramsResponse>(`/programs?${params}`, {
+    return this.makeRequest<ProgramsResponse>(`/programs?${searchParams}`, {
       method: 'GET',
     });
   }
@@ -319,18 +331,20 @@ class AuthService {
     });
   }
 
-  async getCampuses(
-    limit: number = 100,
-    offset: number = 0,
-    year: number = 2025
-  ): Promise<CampusesResponse> {
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
-      year: year.toString(),
+  async getCampuses(params?: {
+    limit?: number;
+    offset?: number;
+    admission_year?: number;
+    year?: number;
+  }): Promise<CampusesResponse> {
+    const searchParams = new URLSearchParams({
+      limit: String(params?.limit ?? 100),
+      offset: String(params?.offset ?? 0),
     });
+    const year = params?.admission_year ?? params?.year;
+    if (year != null) searchParams.set('admission_year', String(year));
 
-    return this.makeRequest<CampusesResponse>(`/campuses?${params}`, {
+    return this.makeRequest<CampusesResponse>(`/campuses?${searchParams}`, {
       method: 'GET',
     });
   }
@@ -401,13 +415,15 @@ class AuthService {
     program_code?: string;
     campus_code?: string;
     year?: number;
+    admission_year?: number;
     limit?: number;
     offset?: number;
   }): Promise<TuitionResponse> {
     const searchParams = new URLSearchParams();
     if (params?.program_code) searchParams.append('program_code', params.program_code);
     if (params?.campus_code) searchParams.append('campus_code', params.campus_code);
-    if (params?.year) searchParams.append('year', params.year.toString());
+    const year = params?.admission_year ?? params?.year;
+    if (year != null) searchParams.append('admission_year', year.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.offset) searchParams.append('offset', params.offset.toString());
 
@@ -430,10 +446,12 @@ class AuthService {
   async getTuitionComparison(params?: {
     program_code?: string;
     year?: number;
+    admission_year?: number;
   }): Promise<{ data: TuitionComparison[] }> {
     const searchParams = new URLSearchParams();
     if (params?.program_code) searchParams.append('program_code', params.program_code);
-    if (params?.year) searchParams.append('year', params.year.toString());
+    const year = params?.admission_year ?? params?.year;
+    if (year != null) searchParams.append('admission_year', year.toString());
 
     const response = await fetch(`${API_ENDPOINTS.TUITION}/comparison?${searchParams}`, {
       method: 'GET',
@@ -459,18 +477,23 @@ class AuthService {
   async createTuitionRecord(data: {
     program_id: string;
     campus_id: string;
-    year: number;
+    year?: number;
+    admission_year?: number;
     semester_group_1_3_fee: number;
     semester_group_4_6_fee: number;
     semester_group_7_9_fee: number;
   }): Promise<{ data: TuitionFee }> {
+    const { year, admission_year, ...rest } = data;
     const response = await fetch(`${API_ENDPOINTS.TUITION}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.getToken()}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...rest,
+        admission_year: admission_year ?? year,
+      }),
     });
 
     if (!response.ok) {
@@ -486,18 +509,26 @@ class AuthService {
     program_id?: string;
     campus_id?: string;
     year?: number;
+    admission_year?: number;
     semester_group_1_3_fee?: number;
     semester_group_4_6_fee?: number;
     semester_group_7_9_fee?: number;
     is_active?: boolean;
   }): Promise<{ data: TuitionFee }> {
+    const { year, admission_year, ...rest } = data;
+    const payload = {
+      ...rest,
+      ...(year != null || admission_year != null
+        ? { admission_year: admission_year ?? year }
+        : {}),
+    };
     const response = await fetch(`${API_ENDPOINTS.TUITION}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.getToken()}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -528,13 +559,15 @@ class AuthService {
   // Scholarship methods
   async getScholarships(params?: {
     year?: number;
+    admission_year?: number;
     type?: string;
     limit?: number;
     offset?: number;
   }): Promise<ScholarshipResponse> {
     const searchParams = new URLSearchParams();
 
-    if (params?.year) searchParams.append('year', params.year.toString());
+    const year = params?.admission_year ?? params?.year;
+    if (year != null) searchParams.append('admission_year', year.toString());
     if (params?.type) searchParams.append('type', params.type);
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.offset) searchParams.append('offset', params.offset.toString());
@@ -596,9 +629,11 @@ class AuthService {
     recipients: number;
     percentage?: number | null;
     requirements?: string;
-    year: number;
+    year?: number;
+    admission_year?: number;
     notes?: string;
   }): Promise<{ data: Scholarship }> {
+    const { year, admission_year, ...rest } = data;
     const token = this.getToken();
     const response = await fetch(API_ENDPOINTS.SCHOLARSHIPS, {
       method: 'POST',
@@ -606,7 +641,10 @@ class AuthService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...rest,
+        admission_year: admission_year ?? year,
+      }),
     });
 
     if (!response.ok) {
@@ -634,9 +672,17 @@ class AuthService {
     percentage?: number | null;
     requirements?: string;
     year?: number;
+    admission_year?: number;
     notes?: string;
     is_active?: boolean;
   }): Promise<{ data: Scholarship }> {
+    const { year, admission_year, ...rest } = data;
+    const payload = {
+      ...rest,
+      ...(year != null || admission_year != null
+        ? { admission_year: admission_year ?? year }
+        : {}),
+    };
     const token = this.getToken();
     const response = await fetch(`${API_ENDPOINTS.SCHOLARSHIPS}/${id}`, {
       method: 'PUT',
@@ -644,7 +690,7 @@ class AuthService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -697,12 +743,14 @@ class AuthService {
   // Admission Methods
   async getAdmissionMethods(params?: {
     year?: number;
+    admission_year?: number;
     limit?: number;
     offset?: number;
   }): Promise<AdmissionMethodResponse> {
     const searchParams = new URLSearchParams();
 
-    if (params?.year) searchParams.append('year', params.year.toString());
+    const year = params?.admission_year ?? params?.year;
+    if (year != null) searchParams.append('admission_year', year.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.offset !== undefined) searchParams.append('offset', params.offset.toString());
 
@@ -761,8 +809,10 @@ class AuthService {
     name: string;
     requirements?: string;
     notes?: string;
-    year: number;
+    year?: number;
+    admission_year?: number;
   }): Promise<{ data: AdmissionMethod }> {
+    const { year, admission_year, ...rest } = data;
     const token = this.getToken();
     const response = await fetch(API_ENDPOINTS.ADMISSION_METHODS, {
       method: 'POST',
@@ -770,7 +820,10 @@ class AuthService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...rest,
+        admission_year: admission_year ?? year,
+      }),
     });
 
     if (!response.ok) {
@@ -799,8 +852,16 @@ class AuthService {
     requirements?: string;
     notes?: string;
     year?: number;
+    admission_year?: number;
     is_active?: boolean;
   }): Promise<{ data: AdmissionMethod }> {
+    const { year, admission_year, ...rest } = data;
+    const payload = {
+      ...rest,
+      ...(year != null || admission_year != null
+        ? { admission_year: admission_year ?? year }
+        : {}),
+    };
     const token = this.getToken();
     const response = await fetch(`${API_ENDPOINTS.ADMISSION_METHODS}/${id}`, {
       method: 'PUT',
@@ -808,7 +869,7 @@ class AuthService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

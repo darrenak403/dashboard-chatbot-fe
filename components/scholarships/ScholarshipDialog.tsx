@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Scholarship } from "@/lib/auth";
+import { useYear } from "@/contexts/year-context";
 
 interface ScholarshipDialogProps {
   open: boolean;
@@ -50,6 +51,9 @@ const ScholarshipDialog = React.memo(function ScholarshipDialog({
   submitText,
   initialData,
 }: ScholarshipDialogProps) {
+  const { selectedYear } = useYear();
+  const defaultYear = selectedYear ?? new Date().getFullYear();
+
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -57,7 +61,7 @@ const ScholarshipDialog = React.memo(function ScholarshipDialog({
     recipients: 1,
     percentage: null as number | null,
     requirements: "",
-    year: new Date().getFullYear(),
+    year: defaultYear,
     notes: "",
     is_active: true,
   });
@@ -85,13 +89,13 @@ const ScholarshipDialog = React.memo(function ScholarshipDialog({
         recipients: 1,
         percentage: null,
         requirements: "",
-        year: new Date().getFullYear(),
+        year: defaultYear,
         notes: "",
         is_active: true,
       });
     }
     setErrors({});
-  }, [initialData, open]);
+  }, [initialData, open, defaultYear]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -137,7 +141,10 @@ const ScholarshipDialog = React.memo(function ScholarshipDialog({
       return;
     }
 
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      year: selectedYear ?? formData.year,
+    });
   };
 
   const scholarshipTypes = [
@@ -179,18 +186,22 @@ const ScholarshipDialog = React.memo(function ScholarshipDialog({
             </div>
 
             <div>
-              <Label htmlFor="year">Năm *</Label>
-              <Input
-                id="year"
-                type="number"
-                min={2020}
-                max={2030}
-                value={formData.year}
-                onChange={(e) =>
-                  setFormData({ ...formData, year: parseInt(e.target.value) })
-                }
-                className={errors.year ? "border-red-500" : ""}
-              />
+              <Label htmlFor="year">Năm tuyển sinh *</Label>
+              {selectedYear != null ? (
+                <Input id="year" value={selectedYear} readOnly disabled className="bg-gray-50" />
+              ) : (
+                <Input
+                  id="year"
+                  type="number"
+                  min={2020}
+                  max={2030}
+                  value={formData.year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, year: parseInt(e.target.value) })
+                  }
+                  className={errors.year ? "border-red-500" : ""}
+                />
+              )}
               {errors.year && (
                 <p className="text-sm text-red-500 mt-1">{errors.year}</p>
               )}

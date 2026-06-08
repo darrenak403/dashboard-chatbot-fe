@@ -79,7 +79,7 @@ export default function FaqSubTopicsPage() {
   const [editingSubTopic, setEditingSubTopic] = useState<FaqSubTopic | null>(null);
   const [deletingSubTopic, setDeletingSubTopic] = useState<FaqSubTopic | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ topic_id: "", name: "", description: "", is_active: true });
+  const [formData, setFormData] = useState({ topic_id: "", code: "", name: "", description: "", is_active: true });
 
   useEffect(() => {
     faqTopicsService.list({ limit: 100 }).then((res) => setTopics(res.data)).catch(() => {});
@@ -118,13 +118,13 @@ export default function FaqSubTopicsPage() {
 
   const openCreate = () => {
     setEditingSubTopic(null);
-    setFormData({ topic_id: filterTopicId !== "all" ? filterTopicId : "", name: "", description: "", is_active: true });
+    setFormData({ topic_id: filterTopicId !== "all" ? filterTopicId : "", code: "", name: "", description: "", is_active: true });
     setIsDialogOpen(true);
   };
 
   const openEdit = (st: FaqSubTopic) => {
     setEditingSubTopic(st);
-    setFormData({ topic_id: st.topic_id, name: st.name, description: st.description, is_active: st.is_active });
+    setFormData({ topic_id: st.topic_id, code: st.code, name: st.name, description: st.description, is_active: st.is_active });
     setIsDialogOpen(true);
   };
 
@@ -263,6 +263,7 @@ export default function FaqSubTopicsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Mã</TableHead>
                     <TableHead>Tên Chủ Đề Con</TableHead>
                     <TableHead>Chủ Đề Cha</TableHead>
                     <TableHead>Mô Tả</TableHead>
@@ -273,13 +274,14 @@ export default function FaqSubTopicsPage() {
                 <TableBody>
                   {subTopics.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Không có chủ đề con nào.
                       </TableCell>
                     </TableRow>
                   ) : (
                     subTopics.map((st) => (
                       <TableRow key={st.id}>
+                        <TableCell className="font-mono text-xs text-gray-500">{st.code}</TableCell>
                         <TableCell className="font-medium">{st.name}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -361,6 +363,17 @@ export default function FaqSubTopicsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="st_code">Mã Chủ Đề Con *</Label>
+                  <Input
+                    id="st_code"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    placeholder="VD: PHUONG_THUC_XET_TUYEN"
+                    maxLength={50}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="st_name">Tên Chủ Đề Con *</Label>

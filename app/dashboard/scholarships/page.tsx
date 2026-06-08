@@ -40,9 +40,11 @@ import {
 import { authService, Scholarship, ScholarshipResponse } from "@/lib/auth";
 import { ScholarshipDialog } from "@/components/scholarships";
 import { useRouter } from "next/navigation";
+import { useYear } from "@/contexts/year-context";
 
 export default function ScholarshipsPage() {
   const router = useRouter();
+  const { selectedYear } = useYear();
 
   // State management
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
@@ -56,10 +58,6 @@ export default function ScholarshipsPage() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
-
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -78,7 +76,7 @@ export default function ScholarshipsPage() {
       const params = {
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
-        year: selectedYear,
+        ...(selectedYear != null && { admission_year: selectedYear }),
         ...(selectedType !== "all" && { type: selectedType }),
       };
 
@@ -357,7 +355,7 @@ export default function ScholarshipsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{selectedYear}</div>
+            <div className="text-2xl font-bold">{selectedYear ?? "—"}</div>
           </CardContent>
         </Card>
       </div>
@@ -401,26 +399,6 @@ export default function ScholarshipsPage() {
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">Năm</label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 11 }, (_, i) => 2020 + i).map(
-                    (year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>

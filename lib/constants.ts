@@ -34,6 +34,9 @@ export const API_ENDPOINTS = {
   // Admission Methods
   ADMISSION_METHODS: `${API_V1_URL}/admission-methods`,
 
+  // Admission Years
+  ADMISSION_YEARS: `${API_V1_URL}/admission-years`,
+
   // Users
   USERS: `${API_V1_URL}/users`,
 
@@ -50,6 +53,8 @@ export const DEFAULT_PAGINATION = {
   LIMIT: 10,
   OFFSET: 0,
 } as const;
+
+export const MAX_PAGE_LIMIT = 100;
 
 // UI Constants
 export const UI_CONSTANTS = {
@@ -113,6 +118,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
+  YEARS: '/dashboard/years',
   DEPARTMENTS: '/dashboard/departments',
   PROGRAMS: '/dashboard/programs',
   CAMPUSES: '/dashboard/campuses',

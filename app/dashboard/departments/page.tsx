@@ -60,8 +60,10 @@ import {
   UpdateDepartmentRequest,
 } from "@/lib/auth";
 import { API_ENDPOINTS } from "@/lib/constants";
+import { useYear } from "@/contexts/year-context";
 
 export default function DepartmentsPage() {
+  const { selectedYear } = useYear();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -99,7 +101,11 @@ export default function DepartmentsPage() {
     try {
       setError("");
       const offset = (page - 1) * limit;
-      const response = await authService.getDepartments(limit, offset);
+      const response = await authService.getDepartments({
+        limit,
+        offset,
+        ...(selectedYear != null && { admission_year: selectedYear }),
+      });
 
       setDepartments(response.data);
       setMeta(response.meta);
@@ -124,7 +130,7 @@ export default function DepartmentsPage() {
     };
 
     loadDepartments();
-  }, []);
+  }, [selectedYear]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -179,7 +185,10 @@ export default function DepartmentsPage() {
         await authService.updateDepartment(editingDepartment.id, formData);
       } else {
         // Create new department
-        await authService.createDepartment(formData);
+        await authService.createDepartment({
+          ...formData,
+          ...(selectedYear != null && { admission_year: selectedYear }),
+        });
       }
 
       setIsDialogOpen(false);
@@ -200,7 +209,7 @@ export default function DepartmentsPage() {
     try {
       // First check if department has any programs
       const programsResponse = await fetch(
-        `${API_ENDPOINTS.PROGRAMS}?department_code=${deletingDepartment.code}&limit=1&offset=0`
+        `${API_ENDPOINTS.PROGRAMS}?department_code=${deletingDepartment.code}&limit=1&offset=0${selectedYear != null ? `&admission_year=${selectedYear}` : ""}`
       );
 
       if (programsResponse.ok) {
@@ -285,9 +294,12 @@ export default function DepartmentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <Building2 className="h-8 w-8 mr-3 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <Building2 className="h-8 w-8 text-blue-600" />
               Khoa
+              {selectedYear != null && (
+                <Badge variant="outline" className="text-sm font-medium">Năm {selectedYear}</Badge>
+              )}
             </h1>
             <p className="text-gray-600 mt-1">Quản lý các khoa học thuật</p>
           </div>

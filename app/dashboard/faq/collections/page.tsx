@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Card,
@@ -16,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -59,15 +59,12 @@ import {
   Edit,
   Trash2,
   ArrowRightLeft,
-  ListOrdered,
-  X,
+  Eye,
+  Download,
 } from "lucide-react";
 import {
   faqCollectionsService,
-  faqQuestionsService,
   FaqCollection,
-  FaqCollectionItem,
-  FaqQuestion,
   CollectionStatus,
   COLLECTION_STATUS_TRANSITIONS,
   STATUS_LABELS,
@@ -75,18 +72,19 @@ import {
 } from "@/lib/faq";
 import { authService, Campus } from "@/lib/auth";
 import { API_ENDPOINTS } from "@/lib/constants";
+import { useYear } from "@/contexts/year-context";
 
 const LIMIT = 10;
 
 
 export default function FaqCollectionsPage() {
   const router = useRouter();
+  const { selectedYear } = useYear();
   const [collections, setCollections] = useState<FaqCollection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterYear, setFilterYear] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, limit: LIMIT, offset: 0, has_next: false, has_prev: false });
 
@@ -100,13 +98,6 @@ export default function FaqCollectionsPage() {
     admission_year: new Date().getFullYear(),
   });
 
-  // Items dialog
-  const [isItemsDialogOpen, setIsItemsDialogOpen] = useState(false);
-  const [itemsCollection, setItemsCollection] = useState<FaqCollection | null>(null);
-  const [collectionItems, setCollectionItems] = useState<FaqCollectionItem[]>([]);
-  const [availableQuestions, setAvailableQuestions] = useState<FaqQuestion[]>([]);
-  const [isLoadingItems, setIsLoadingItems] = useState(false);
-
   // Status dialog
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [statusCollection, setStatusCollection] = useState<FaqCollection | null>(null);
@@ -115,7 +106,7 @@ export default function FaqCollectionsPage() {
   // Delete dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingCollection, setDeletingCollection] = useState<FaqCollection | null>(null);
-
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const fetchCollections = useCallback(async (page: number = 1) => {
     try {
@@ -123,7 +114,7 @@ export default function FaqCollectionsPage() {
       const offset = (page - 1) * LIMIT;
       const params: Parameters<typeof faqCollectionsService.list>[0] = { limit: LIMIT, offset };
       if (filterStatus !== "all") params.status = filterStatus;
-      if (filterYear) params.admission_year = Number(filterYear);
+      if (selectedYear != null) params.admission_year = selectedYear;
       const res = await faqCollectionsService.list(params);
       setCollections(res.data);
       setMeta(res.meta);
@@ -133,7 +124,7 @@ export default function FaqCollectionsPage() {
       setError(msg);
       if (msg.includes("401")) { authService.logout(); router.push("/login"); }
     }
-  }, [filterStatus, filterYear, router]);
+  }, [filterStatus, selectedYear, router]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -148,7 +139,7 @@ export default function FaqCollectionsPage() {
 
   const openCreate = () => {
     setEditingCollection(null);
-    setFormData({ name: "", description: "", admission_year: new Date().getFullYear() });
+    setFormData({ name: "", description: "", admission_year: selectedYear ?? new Date().getFullYear() });
     setIsDialogOpen(true);
   };
 
@@ -160,24 +151,6 @@ export default function FaqCollectionsPage() {
       admission_year: c.admission_year,
     });
     setIsDialogOpen(true);
-  };
-
-  const openItems = async (c: FaqCollection) => {
-    setItemsCollection(c);
-    setIsLoadingItems(true);
-    setIsItemsDialogOpen(true);
-    try {
-      const [detail, questionsRes] = await Promise.all([
-        faqCollectionsService.get(c.id),
-        faqQuestionsService.list({ limit: 100, status: "approved" }),
-      ]);
-      setCollectionItems(detail.data.items || []);
-      setAvailableQuestions(questionsRes.data);
-    } catch {
-      toast.error("Không thể tải nội dung bộ câu hỏi");
-    } finally {
-      setIsLoadingItems(false);
-    }
   };
 
   const openStatus = (c: FaqCollection) => {
@@ -217,35 +190,6 @@ export default function FaqCollectionsPage() {
     }
   };
 
-  const handleAddItem = async (question: FaqQuestion) => {
-    if (!itemsCollection) return;
-    try {
-      await faqCollectionsService.addItem(itemsCollection.id, question.id);
-      const newItem: FaqCollectionItem = {
-        id: crypto.randomUUID(),
-        collection_id: itemsCollection.id,
-        question_id: question.id,
-        order_index: collectionItems.length,
-        question,
-      };
-      setCollectionItems((prev) => [...prev, newItem]);
-      toast.success("Đã thêm câu hỏi vào bộ câu hỏi");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Thêm thất bại");
-    }
-  };
-
-  const handleRemoveItem = async (item: FaqCollectionItem) => {
-    if (!itemsCollection) return;
-    try {
-      await faqCollectionsService.removeItem(itemsCollection.id, item.question_id);
-      setCollectionItems((prev) => prev.filter((i) => i.question_id !== item.question_id));
-      toast.success("Đã xóa câu hỏi khỏi bộ câu hỏi");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Xóa thất bại");
-    }
-  };
-
   const handleStatusChange = async () => {
     if (!statusCollection || !newStatus) return;
     setIsSubmitting(true);
@@ -258,6 +202,26 @@ export default function FaqCollectionsPage() {
       toast.error(err instanceof Error ? err.message : "Đổi trạng thái thất bại");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleExport = async (c: FaqCollection) => {
+    setExportingId(c.id);
+    try {
+      const blob = await faqCollectionsService.exportCsv(c.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `faq-collection-${c.id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Đã xuất file CSV");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xuất file thất bại");
+    } finally {
+      setExportingId(null);
     }
   };
 
@@ -279,8 +243,6 @@ export default function FaqCollectionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(meta.total / LIMIT));
   const allowedTransitions = statusCollection ? COLLECTION_STATUS_TRANSITIONS[statusCollection.status] : [];
-  const itemQuestionIds = new Set(collectionItems.map((i) => i.question_id));
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -298,7 +260,7 @@ export default function FaqCollectionsPage() {
               <BookOpen className="h-8 w-8 mr-3 text-blue-600" />
               Bộ Câu Hỏi FAQ
             </h1>
-            <p className="text-gray-600 mt-1">Quản lý bộ câu hỏi câu hỏi - câu trả lời để xuất bản</p>
+            <p className="text-gray-600 mt-1">Quản lý bộ câu hỏi theo năm tuyển sinh để xuất bản</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline" size="sm">
@@ -350,13 +312,9 @@ export default function FaqCollectionsPage() {
                   <SelectItem value="archived">{STATUS_LABELS.archived}</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                placeholder="Năm tuyển sinh"
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                className="w-40"
-              />
+              {selectedYear != null && (
+                <Badge variant="outline">Năm {selectedYear}</Badge>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -406,11 +364,22 @@ export default function FaqCollectionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-1">
+                            <Button variant="ghost" size="sm" asChild title="Xem chi tiết">
+                              <Link href={`/dashboard/faq/collections/detail?id=${c.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleExport(c)}
+                              title="Xuất CSV"
+                              disabled={exportingId === c.id}
+                            >
+                              <Download className={`h-4 w-4 ${exportingId === c.id ? "animate-pulse" : ""}`} />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => openEdit(c)} title="Chỉnh sửa">
                               <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => openItems(c)} title="Quản lý nội dung">
-                              <ListOrdered className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -464,7 +433,7 @@ export default function FaqCollectionsPage() {
             <DialogHeader>
               <DialogTitle>{editingCollection ? "Chỉnh Sửa Bộ Câu Hỏi" : "Tạo Bộ Câu Hỏi Mới"}</DialogTitle>
               <DialogDescription>
-                {editingCollection ? "Cập nhật thông tin bộ câu hỏi." : "Tạo bộ câu hỏi mới để nhóm các câu trả lời FAQ."}
+                {editingCollection ? "Cập nhật thông tin bộ câu hỏi." : "Tạo bộ câu hỏi mới để nhóm các câu hỏi FAQ."}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -491,15 +460,19 @@ export default function FaqCollectionsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="col_year">Năm Tuyển Sinh *</Label>
-                  <Input
-                    id="col_year"
-                    type="number"
-                    value={formData.admission_year}
-                    onChange={(e) => setFormData({ ...formData, admission_year: Number(e.target.value) })}
-                    min={2020}
-                    max={2030}
-                    required
-                  />
+                  {selectedYear != null && !editingCollection ? (
+                    <Input id="col_year" value={selectedYear} readOnly disabled className="bg-gray-50" />
+                  ) : (
+                    <Input
+                      id="col_year"
+                      type="number"
+                      value={formData.admission_year}
+                      onChange={(e) => setFormData({ ...formData, admission_year: Number(e.target.value) })}
+                      min={2020}
+                      max={2030}
+                      required
+                    />
+                  )}
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
               </div>
@@ -510,86 +483,6 @@ export default function FaqCollectionsPage() {
                 </Button>
               </DialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Items Dialog */}
-        <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-          <DialogContent className="sm:max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Quản Lý Nội Dung: {itemsCollection?.name}</DialogTitle>
-              <DialogDescription>
-                Thêm hoặc xóa câu trả lời khỏi bộ câu hỏi này.
-              </DialogDescription>
-            </DialogHeader>
-            {isLoadingItems ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 py-4" style={{ maxHeight: "60vh", overflow: "hidden" }}>
-                {/* Current items */}
-                <div className="flex flex-col">
-                  <h4 className="font-semibold text-sm mb-2 text-gray-700">
-                    Câu hỏi trong bộ câu hỏi ({collectionItems.length})
-                  </h4>
-                  <Separator className="mb-2" />
-                  <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                    {collectionItems.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">Chưa có câu hỏi nào</p>
-                    ) : (
-                      collectionItems.map((item) => (
-                        <div key={item.id} className="flex items-start justify-between p-2 rounded border bg-gray-50 gap-2">
-                          <p className="text-sm flex-1 line-clamp-2">
-                            {item.question?.content || item.question_id}
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700 flex-shrink-0 h-6 w-6 p-0"
-                            onClick={() => handleRemoveItem(item)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Available questions */}
-                <div className="flex flex-col">
-                  <h4 className="font-semibold text-sm mb-2 text-gray-700">
-                    Câu hỏi đã duyệt ({availableQuestions.filter((q) => !itemQuestionIds.has(q.id)).length} khả dụng)
-                  </h4>
-                  <Separator className="mb-2" />
-                  <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                    {availableQuestions.filter((q) => !itemQuestionIds.has(q.id)).length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">Không có câu hỏi khả dụng</p>
-                    ) : (
-                      availableQuestions
-                        .filter((q) => !itemQuestionIds.has(q.id))
-                        .map((question) => (
-                          <div key={question.id} className="flex items-start justify-between p-2 rounded border hover:bg-blue-50 gap-2">
-                            <p className="text-sm flex-1 line-clamp-2">{question.content}</p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-blue-600 hover:text-blue-800 flex-shrink-0 h-6 px-2 text-xs"
-                              onClick={() => handleAddItem(question)}
-                            >
-                              + Thêm
-                            </Button>
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsItemsDialogOpen(false)}>Đóng</Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 

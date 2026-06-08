@@ -46,9 +46,11 @@ import AdmissionMethodDialog, {
   AdmissionMethodFormData,
 } from "@/components/admission-methods/admission-method-dialog";
 import DeleteConfirmDialog from "@/components/admission-methods/delete-confirm-dialog";
+import { useYear } from "@/contexts/year-context";
 
 export default function AdmissionMethodsPage() {
   const router = useRouter();
+  const { selectedYear } = useYear();
 
   // State management
   const [admissionMethods, setAdmissionMethods] = useState<AdmissionMethod[]>(
@@ -63,10 +65,6 @@ export default function AdmissionMethodsPage() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
-
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -107,7 +105,7 @@ export default function AdmissionMethodsPage() {
 
       if (pageSize > 0) params.limit = pageSize;
       if (currentPage > 1) params.offset = (currentPage - 1) * pageSize;
-      if (selectedYear > 0) params.year = selectedYear;
+      if (selectedYear != null) params.admission_year = selectedYear;
 
       console.log("Fetching admission methods with params:", params);
 
@@ -341,7 +339,7 @@ export default function AdmissionMethodsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{selectedYear}</div>
+            <div className="text-2xl font-bold">{selectedYear ?? "—"}</div>
           </CardContent>
         </Card>
 
@@ -378,26 +376,6 @@ export default function AdmissionMethodsPage() {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">Năm</label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 11 }, (_, i) => 2020 + i).map(
-                    (year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>

@@ -49,8 +49,7 @@ interface TuitionFeesTabProps {
   setSelectedProgramCode: (code: string) => void;
   selectedCampusCode: string;
   setSelectedCampusCode: (code: string) => void;
-  selectedYear: number;
-  setSelectedYear: (year: number) => void;
+  selectedYear: number | null;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   pageSize: number;
@@ -75,7 +74,6 @@ const TuitionFeesTab = React.memo(function TuitionFeesTab({
   selectedCampusCode,
   setSelectedCampusCode,
   selectedYear,
-  setSelectedYear,
   currentPage,
   setCurrentPage,
   pageSize,
@@ -94,8 +92,6 @@ const TuitionFeesTab = React.memo(function TuitionFeesTab({
       fee.campus_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fee.department_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const availableYears = [2024, 2025, 2026];
 
   return (
     <div className="space-y-4">
@@ -140,7 +136,7 @@ const TuitionFeesTab = React.memo(function TuitionFeesTab({
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{selectedYear}</div>
+            <div className="text-2xl font-bold">{selectedYear ?? "—"}</div>
           </CardContent>
         </Card>
       </div>
@@ -154,7 +150,7 @@ const TuitionFeesTab = React.memo(function TuitionFeesTab({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="search">Tìm kiếm</Label>
               <div className="relative">
@@ -201,24 +197,6 @@ const TuitionFeesTab = React.memo(function TuitionFeesTab({
                   {campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.code}>
                       {campus.code} - {campus.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="year">Năm học</Label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
                     </SelectItem>
                   ))}
                 </SelectContent>
