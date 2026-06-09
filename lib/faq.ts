@@ -594,14 +594,68 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 export function downloadFaqCollectionFile(blob: Blob, filename: string) {
   triggerBlobDownload(blob, filename);
+}
+
+export interface FaqCollectionTopicMdFile {
+  topic_id: string;
+  topic_code: string;
+  topic_name: string;
+  filename: string;
+  content: string;
+  record_count: number;
+}
+
+export interface FaqCollectionTopicsMdExportResult {
+  data: FaqCollectionTopicMdFile[];
+  meta: {
+    collection_id: string;
+    collection_name: string;
+    requested_topic_count: number;
+    exported_topic_count: number;
+  };
+}
+
+function slugifyFilename(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'faq-collection';
+}
+
+export async function downloadFaqCollectionTopicMdFiles(
+  files: FaqCollectionTopicMdFile[],
+  options?: { collectionName?: string }
+): Promise<'single' | 'zip'> {
+  if (files.length === 0) return 'single';
+
+  if (files.length === 1) {
+    const blob = new Blob([files[0].content], { type: 'text/markdown;charset=utf-8' });
+    triggerBlobDownload(blob, files[0].filename);
+    return 'single';
+  }
+
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  for (const file of files) {
+    zip.file(file.filename, file.content);
+  }
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const zipName = `${slugifyFilename(options?.collectionName ?? 'faq-collection')}-topics.zip`;
+  triggerBlobDownload(zipBlob, zipName);
+  return 'zip';
 }
 
 export async function downloadFaqCollectionExcel(collectionId: string): Promise<void> {
@@ -625,11 +679,18 @@ export async function downloadFaqCollectionExcel(collectionId: string): Promise<
   triggerBlobDownload(blob, filename);
 }
 
-async function fetchCollectionMdExport(
-  id: string
-): Promise<{ blob: Blob; filename: string }> {
+export interface FaqCollectionMdExportResult {
+  content: string;
+  blob: Blob;
+  filename: string;
+}
+
+export async function fetchFaqCollectionMdExport(
+  collectionId: string,
+  collectionName?: string
+): Promise<FaqCollectionMdExportResult> {
   const token = authService.getToken();
-  const res = await fetch(`${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/export.md`, {
+  const res = await fetch(`${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/export.md`, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -637,10 +698,19 @@ async function fetchCollectionMdExport(
   if (!res.ok) {
     throw new Error('Không thể xuất file Markdown. Vui lòng thử lại.');
   }
+  const content = await res.text();
   return {
-    blob: await res.blob(),
-    filename: getDownloadFileName(res) ?? `faq-collection-${id}.md`,
+    content,
+    blob: new Blob([content], { type: 'text/markdown;charset=utf-8' }),
+    filename: getDownloadFileName(res) ?? `${slugifyFilename(collectionName ?? 'faq-collection')}.md`,
   };
+}
+
+export function isFaqCollectionMarkdown(content: string) {
+  return (
+    content.includes('document_type: faq_collection') &&
+    content.includes('schema_version: 1')
+  );
 }
 
 export const faqCollectionsService = {
@@ -687,8 +757,14 @@ export const faqCollectionsService = {
       `${API_ENDPOINTS.FAQ_COLLECTIONS}/${id}/detail`
     );
   },
-  async exportMd(id: string) {
-    return fetchCollectionMdExport(id);
+  async exportMd(id: string, collectionName?: string) {
+    return fetchFaqCollectionMdExport(id, collectionName);
+  },
+  exportTopicsMd(collectionId: string, topic_ids: string[]) {
+    return request<FaqCollectionTopicsMdExportResult>(
+      `${API_ENDPOINTS.FAQ_COLLECTIONS}/${collectionId}/export/topics.md`,
+      { method: 'POST', body: JSON.stringify({ topic_ids }) }
+    );
   },
   addItems(collectionId: string, question_ids: string[]) {
     return request<{ message: string; inserted: number }>(

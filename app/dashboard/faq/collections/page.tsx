@@ -229,9 +229,9 @@ export default function FaqCollectionsPage() {
     const key = `${c.id}:md`;
     setExportingKey(key);
     try {
-      const result = await faqCollectionsService.exportMd(c.id);
+      const result = await faqCollectionsService.exportMd(c.id, c.name);
       downloadFaqCollectionFile(result.blob, result.filename);
-      toast.success('Đã xuất file Markdown');
+      toast.success('Đã xuất file Markdown (faq_collection)');
     } catch (err) {
       toast.error(
         err instanceof Error

@@ -28,6 +28,7 @@ import {
   BookOpen,
   ChevronLeft,
   Download,
+  Eye,
   FileText,
   RefreshCw,
   FolderOpen,
@@ -41,6 +42,8 @@ import {
   faqCollectionsService,
   downloadFaqCollectionExcel,
   downloadFaqCollectionFile,
+  downloadFaqCollectionTopicMdFiles,
+  isFaqCollectionMarkdown,
   faqTopicsService,
   faqSubTopicsService,
   faqQuestionsService,
@@ -93,6 +96,15 @@ export default function FaqCollectionDetailPage() {
   const [addingQuestionId, setAddingQuestionId] = useState<string | null>(null);
   const [isAddingBySubTopic, setIsAddingBySubTopic] = useState(false);
   const [removingQuestionId, setRemovingQuestionId] = useState<string | null>(null);
+
+  // Export MD by topic
+  const [isTopicExportDialogOpen, setIsTopicExportDialogOpen] = useState(false);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+  const [isExportingTopicsMd, setIsExportingTopicsMd] = useState(false);
+  const [isPreviewingMd, setIsPreviewingMd] = useState(false);
+  const [mdPreviewOpen, setMdPreviewOpen] = useState(false);
+  const [mdPreviewTitle, setMdPreviewTitle] = useState("");
+  const [mdPreviewFiles, setMdPreviewFiles] = useState<{ filename: string; content: string }[]>([]);
 
   const yearParams = useMemo(() => {
     const year = detail?.admission_year ?? selectedYear;
@@ -247,13 +259,122 @@ export default function FaqCollectionDetailPage() {
     }
   };
 
-  const handleExportMarkdown = async () => {
+  const openTopicExportDialog = () => {
+    setSelectedTopicIds([]);
+    setIsTopicExportDialogOpen(true);
+  };
+
+  const toggleTopicExport = (topicId: string) => {
+    setSelectedTopicIds((prev) =>
+      prev.includes(topicId) ? prev.filter((id) => id !== topicId) : [...prev, topicId]
+    );
+  };
+
+  const toggleAllTopicExport = () => {
+    if (!detail) return;
+    setSelectedTopicIds((prev) =>
+      prev.length === detail.topics.length ? [] : detail.topics.map((t) => t.id)
+    );
+  };
+
+  const handleExportTopicsMarkdown = async () => {
     if (!id) return;
+    if (selectedTopicIds.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một chủ đề chính");
+      return;
+    }
+    setIsExportingTopicsMd(true);
+    try {
+      const res = await faqCollectionsService.exportTopicsMd(id, selectedTopicIds);
+      if (res.data.length === 0) {
+        toast.warning("Các chủ đề đã chọn không có nội dung để xuất");
+        return;
+      }
+      const mode = await downloadFaqCollectionTopicMdFiles(res.data, {
+        collectionName: res.meta.collection_name,
+      });
+      const totalRecords = res.data.reduce((sum, f) => sum + f.record_count, 0);
+      toast.success(
+        mode === 'zip'
+          ? `Đã tải file ZIP chứa ${res.data.length} file Markdown (${totalRecords} câu hỏi)`
+          : `Đã xuất 1 file Markdown (${totalRecords} câu hỏi)`
+      );
+      setIsTopicExportDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể xuất file Markdown");
+    } finally {
+      setIsExportingTopicsMd(false);
+    }
+  };
+
+  const openMdPreview = (title: string, files: { filename: string; content: string }[]) => {
+    setMdPreviewTitle(title);
+    setMdPreviewFiles(files);
+    setMdPreviewOpen(true);
+  };
+
+  const handlePreviewFullMarkdown = async () => {
+    if (!id || !detail) return;
+    setIsPreviewingMd(true);
+    try {
+      const result = await faqCollectionsService.exportMd(id, detail.name);
+      openMdPreview("Xem trước Markdown toàn bộ", [
+        { filename: result.filename, content: result.content },
+      ]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể xem trước Markdown");
+    } finally {
+      setIsPreviewingMd(false);
+    }
+  };
+
+  const handlePreviewTopicsMarkdown = async () => {
+    if (!id) return;
+    if (selectedTopicIds.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một chủ đề chính");
+      return;
+    }
+    setIsPreviewingMd(true);
+    try {
+      const res = await faqCollectionsService.exportTopicsMd(id, selectedTopicIds);
+      if (res.data.length === 0) {
+        toast.warning("Các chủ đề đã chọn không có nội dung để xem trước");
+        return;
+      }
+      openMdPreview(
+        "Xem trước Markdown theo chủ đề",
+        res.data.map((f) => ({ filename: f.filename, content: f.content }))
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể xem trước Markdown");
+    } finally {
+      setIsPreviewingMd(false);
+    }
+  };
+
+  const handleDownloadPreviewFiles = async () => {
+    if (mdPreviewFiles.length === 0) return;
+    await downloadFaqCollectionTopicMdFiles(
+      mdPreviewFiles.map((f, i) => ({
+        topic_id: String(i),
+        topic_code: "",
+        topic_name: "",
+        filename: f.filename,
+        content: f.content,
+        record_count: 0,
+      })),
+      { collectionName: detail?.name }
+    );
+    toast.success("Đã tải file Markdown");
+  };
+
+  const handleExportMarkdown = async () => {
+    if (!id || !detail) return;
     setExportingFormat('md');
     try {
-      const result = await faqCollectionsService.exportMd(id);
+      const result = await faqCollectionsService.exportMd(id, detail.name);
       downloadFaqCollectionFile(result.blob, result.filename);
-      toast.success('Đã xuất file Markdown');
+      toast.success('Đã xuất file Markdown (faq_collection)');
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -356,11 +477,29 @@ export default function FaqCollectionDetailPage() {
           <Button
             size="sm"
             variant="outline"
+            onClick={handlePreviewFullMarkdown}
+            disabled={exportingFormat !== null || isPreviewingMd}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            {isPreviewingMd ? "Đang tải..." : "Xem trước MD"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={handleExportMarkdown}
             disabled={exportingFormat !== null}
           >
             <FileText className="mr-2 h-4 w-4" />
             {exportingFormat === 'md' ? 'Đang xuất...' : 'Xuất Markdown'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={openTopicExportDialog}
+            disabled={exportingFormat !== null || isExportingTopicsMd || detail.topics.length === 0}
+          >
+            <FolderOpen className="mr-2 h-4 w-4" />
+            Xuất MD theo chủ đề
           </Button>
         </div>
       </div>
@@ -473,6 +612,111 @@ export default function FaqCollectionDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Export MD by Topic Dialog */}
+      <Dialog open={isTopicExportDialogOpen} onOpenChange={setIsTopicExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xuất Markdown Theo Chủ Đề Chính</DialogTitle>
+            <DialogDescription>
+              Format `faq_collection` schema v1. Một chủ đề tải file `.md` riêng; nhiều chủ đề tải file ZIP.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-2">
+            {detail.topics.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">Bộ câu hỏi chưa có chủ đề chính.</p>
+            ) : (
+              <>
+                <label className="flex items-center gap-3 cursor-pointer p-2.5 rounded-md border bg-gray-50 hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={selectedTopicIds.length === detail.topics.length}
+                    onChange={toggleAllTopicExport}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium">Chọn tất cả</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">{detail.topics.length}</Badge>
+                </label>
+                <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-2">
+                  {detail.topics.map((topic) => {
+                    const questionCount = topic.sub_topics.reduce(
+                      (sum, st) => sum + st.questions.length,
+                      0
+                    );
+                    return (
+                      <label
+                        key={topic.id}
+                        className="flex items-center gap-3 cursor-pointer p-2.5 rounded-md hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTopicIds.includes(topic.id)}
+                          onChange={() => toggleTopicExport(topic.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm font-medium block">{topic.name}</span>
+                          <span className="text-xs text-gray-400 font-mono">{topic.code}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0">{questionCount} câu hỏi</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsTopicExportDialogOpen(false)} disabled={isExportingTopicsMd || isPreviewingMd}>
+              Hủy
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handlePreviewTopicsMarkdown}
+              disabled={isExportingTopicsMd || isPreviewingMd || detail.topics.length === 0}
+            >
+              {isPreviewingMd ? "Đang tải..." : "Xem trước"}
+            </Button>
+            <Button onClick={handleExportTopicsMarkdown} disabled={isExportingTopicsMd || isPreviewingMd || detail.topics.length === 0}>
+              {isExportingTopicsMd ? "Đang xuất..." : "Xuất file"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MD Preview Dialog */}
+      <Dialog open={mdPreviewOpen} onOpenChange={setMdPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col gap-0">
+          <DialogHeader>
+            <DialogTitle>{mdPreviewTitle}</DialogTitle>
+            <DialogDescription className="flex flex-wrap items-center gap-2">
+              <span>Format Markdown `faq_collection` · schema_version 1</span>
+              {mdPreviewFiles[0] && isFaqCollectionMarkdown(mdPreviewFiles[0].content) && (
+                <Badge variant="secondary" className="text-xs">Đúng format mới</Badge>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3 overflow-y-auto flex-1 min-h-0 space-y-4 max-h-[65vh]">
+            {mdPreviewFiles.map((file) => (
+              <div key={file.filename} className="space-y-2">
+                {mdPreviewFiles.length > 1 && (
+                  <p className="text-xs font-mono text-gray-500">{file.filename}</p>
+                )}
+                <pre className="text-xs leading-relaxed whitespace-pre-wrap break-words rounded-md border bg-gray-50 p-4 font-mono text-gray-800">
+                  {file.content}
+                </pre>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setMdPreviewOpen(false)}>Đóng</Button>
+            <Button onClick={handleDownloadPreviewFiles}>
+              <Download className="mr-2 h-4 w-4" />
+              Tải file
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Question Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
